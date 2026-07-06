@@ -1,0 +1,1067 @@
+//production url =https://driver-backend-140641417018.europe-west1.run.app
+{
+  "info": {
+    "name": "Woglo Driver Backend API",
+    "_postman_id": "woglo-driver-2026",
+    "description": "Complete API collection for the Woglo Driver Backend.\n\nBase URL variable: {{DRIVER_BASE_URL}}\nDefault: http://localhost:5000/api/v1\n\nSet the `token` variable after login to use protected routes.\n\nFor Vendor Bridge routes, include the header:\n  x-vendor-api-key: woglo_vendor_bridge_secret_key_2026",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "DRIVER_BASE_URL",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vendor_api_key",
+      "value": "woglo_vendor_bridge_secret_key_2026",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Signup with Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/signup/email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Driver\",\n  \"email\": \"driver@example.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Google Login / Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/google",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"<google_id_token>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify Email OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/verify-email-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@example.com\",\n  \"otp\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Resend Email OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/resend-email-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login (Driver)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) pm.collectionVariables.set('token', json.token);",
+                  "if (json.accessToken) pm.collectionVariables.set('token', json.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/login/driver",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@example.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Phone Login / Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/phone-login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify OTP (Phone)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/verify-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\",\n  \"otp\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/refresh-token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"<refresh_token>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/forgot-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/reset-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<reset_token>\",\n  \"password\": \"NewPassword123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify Email (Link)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/verify-email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<email_verify_token>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Complete Driver Registration (Protected)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/complete-driver-registration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseNumber\": \"DL1234567890\",\n  \"licenseExpiry\": \"2028-12-31\",\n  \"vehicleType\": \"Sedan\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Upload Driver KYC (Protected)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/upload-driver-kyc",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "documentFileFront",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "documentFileBack",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "documentType",
+                  "value": "License",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Driver KYC (Protected)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/delete-driver-kyc/:id",
+            "variable": [
+              {
+                "key": "id",
+                "value": "<kyc_id>"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Change Password (Protected)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/auth/change-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"OldPassword123!\",\n  \"newPassword\": \"NewPassword123!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧑‍✈️ Driver",
+      "item": [
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/dashboard"
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/profile"
+          }
+        },
+        {
+          "name": "Upload Profile Picture",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/profile-picture",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profileImage",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Account Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/account/profile"
+          }
+        },
+        {
+          "name": "Update Account Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/account/profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"9876543210\",\n  \"address\": \"New Address\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/account"
+          }
+        },
+        {
+          "name": "Get My Vehicles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/my-vehicles"
+          }
+        },
+        {
+          "name": "Delete My Vehicle",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/my-vehicles/:id",
+            "variable": [
+              {
+                "key": "id",
+                "value": "<vehicle_id>"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/documents"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚦 Ride Requests",
+      "item": [
+        {
+          "name": "Get All Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/requests"
+          }
+        },
+        {
+          "name": "Get Pending Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/requests/pending"
+          }
+        },
+        {
+          "name": "Update Ride Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/requests/:id/status",
+            "variable": [
+              {
+                "key": "id",
+                "value": "<request_id>"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Accepted\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤝 Vendor Requests",
+      "item": [
+        {
+          "name": "Get Vendor Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/vendor-requests"
+          }
+        },
+        {
+          "name": "Respond to Vendor Request",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/vendor-requests/:id/respond",
+            "variable": [
+              {
+                "key": "id",
+                "value": "<request_id>"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"accept\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Vendor Request",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/vendor-requests/:id",
+            "variable": [
+              {
+                "key": "id",
+                "value": "<request_id>"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Mock Send Vendor Request (Dev/Test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/vendor-requests/mock-send",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendorId\": \"<vendor_id>\",\n  \"message\": \"Mock request for testing\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Inbox",
+      "item": [
+        {
+          "name": "Get Inbox",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/inbox"
+          }
+        },
+        {
+          "name": "Send Inbox Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/inbox/send-message",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": \"<recipient_id>\",\n  \"message\": \"Hello from driver!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Calendar",
+      "item": [
+        {
+          "name": "Get Current Calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/calendar/current"
+          }
+        },
+        {
+          "name": "Get Calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/calendar"
+          }
+        },
+        {
+          "name": "Get Calendar Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/calendar/availability"
+          }
+        },
+        {
+          "name": "Update Calendar Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/calendar/update-status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-05-01\",\n  \"status\": \"Available\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notifications",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/notifications"
+          }
+        },
+        {
+          "name": "Get Unread Notification Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/notifications/unread-count"
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/notifications/mark-all-read"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🆘 Help & Support",
+      "item": [
+        {
+          "name": "Get Support Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/help/support-info"
+          }
+        },
+        {
+          "name": "Get Support Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/help/support-types"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚗 Past Rides",
+      "item": [
+        {
+          "name": "Get Past Rides",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/driver/past-rides"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🗺️ Trips",
+      "item": [
+        {
+          "name": "Get All Trips",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/trips"
+          }
+        },
+        {
+          "name": "Get Trip by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/trips/:id",
+            "variable": [
+              {
+                "key": "id",
+                "value": "<trip_id>"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Add Trip Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/trips/:id/review",
+            "variable": [
+              {
+                "key": "id",
+                "value": "<trip_id>"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great trip!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Trip Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/trips/:id/status",
+            "variable": [
+              {
+                "key": "id",
+                "value": "<trip_id>"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Completed\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔗 Vendor Bridge (Server-to-Server)",
+      "description": "These routes are called by the Vendor Backend — NOT directly by mobile apps.\nRequire: x-vendor-api-key header.",
+      "item": [
+        {
+          "name": "Get Available Drivers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-vendor-api-key",
+                "value": "{{vendor_api_key}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/vendor/drivers",
+            "description": "Supports optional ?search=query param"
+          }
+        },
+        {
+          "name": "Send Vendor Request to Driver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-vendor-api-key",
+                "value": "{{vendor_api_key}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/vendor/send-request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driverId\": \"<driver_id>\",\n  \"vendorId\": \"<vendor_id>\",\n  \"vendorName\": \"My Agency\",\n  \"message\": \"We'd like you to join our fleet\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Driver Calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-vendor-api-key",
+                "value": "{{vendor_api_key}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/vendor/driver-calendar/:driverId",
+            "variable": [
+              {
+                "key": "driverId",
+                "value": "<driver_id>"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Assign Vehicle to Driver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-vendor-api-key",
+                "value": "{{vendor_api_key}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/vendor/assign-vehicle",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driverId\": \"<driver_id>\",\n  \"vendorId\": \"<vendor_id>\",\n  \"vehicleId\": \"<vehicle_id>\",\n  \"vehicleDetails\": {\n    \"make\": \"Toyota\",\n    \"model\": \"Camry\",\n    \"licensePlate\": \"KL01AB1234\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove Vendor Partnership",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-vendor-api-key",
+                "value": "{{vendor_api_key}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/vendor/partnership/:driverId/:vendorId",
+            "variable": [
+              {
+                "key": "driverId",
+                "value": "<driver_id>"
+              },
+              {
+                "key": "vendorId",
+                "value": "<vendor_id>"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Partnered Drivers by Vendor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-vendor-api-key",
+                "value": "{{vendor_api_key}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/vendor/drivers/partnered/:vendorId",
+            "variable": [
+              {
+                "key": "vendorId",
+                "value": "<vendor_id>"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Accept Vendor Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-vendor-api-key",
+                "value": "{{vendor_api_key}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/vendor/accept-request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"<request_id>\",\n  \"driverId\": \"<driver_id>\",\n  \"vendorId\": \"<vendor_id>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Vendor Account (Cascade)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-vendor-api-key",
+                "value": "{{vendor_api_key}}"
+              }
+            ],
+            "url": "{{DRIVER_BASE_URL}}/vendor/vendor-account/:vendorId",
+            "variable": [
+              {
+                "key": "vendorId",
+                "value": "<vendor_id>"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

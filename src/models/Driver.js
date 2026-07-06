@@ -30,6 +30,7 @@ const driverSchema = new mongoose.Schema({
     ifscCode: { type: String }
   },
   profilePicture: { type: String },
+  languages: [{ type: String }],
   rating: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }

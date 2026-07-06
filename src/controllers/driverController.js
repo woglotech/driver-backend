@@ -92,6 +92,9 @@ exports.updateAccountProfile = async (req, res, next) => {
           ifscCode: req.body.bankDetails.ifscCode || driver.bankDetails?.ifscCode
         };
       }
+      if (req.body.languages !== undefined) {
+        driver.languages = Array.isArray(req.body.languages) ? req.body.languages : [];
+      }
 
       const updatedDriver = await driver.save();
 
@@ -106,7 +109,8 @@ exports.updateAccountProfile = async (req, res, next) => {
         address: updatedDriver.address,
         license: updatedDriver.license,
         documents: updatedDriver.documents,
-        bankDetails: updatedDriver.bankDetails
+        bankDetails: updatedDriver.bankDetails,
+        languages: updatedDriver.languages
       });
     } else {
       res.status(404);
