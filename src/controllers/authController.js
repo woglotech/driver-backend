@@ -59,8 +59,9 @@ exports.googleLoginOrSignup = async (req, res, next) => {
         isVerified: true, // Google accounts are implicitly verified for email
       });
     } else {
-      // Update profile picture if google has one and it differs from current
-      if (picture && driver.profilePicture !== picture) {
+      // Only backfill profilePicture from Google when the driver doesn't have
+      // one yet — never overwrite a photo the driver has since uploaded themselves.
+      if (picture && !driver.profilePicture) {
         driver.profilePicture = picture;
         await driver.save();
       }
