@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Woglo Admin — Driver Verification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --teal:#008080; --teal-dark:#006666; --teal-light:#e0f5f5;
+      --bg:#f0f4f8; --card:#ffffff; --text:#1a202c; --muted:#718096;
+      --border:#e2e8f0; --green:#38a169; --green-bg:#f0fff4;
+      --red:#e53e3e; --red-bg:#fff5f5; --orange:#dd6b20; --orange-bg:#fffaf0;
+      --shadow:0 4px 24px rgba(0,0,0,0.07);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+    /* LOGIN */
+    #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#006666 0%,#008080 50%,#00a0a0 100%);}
+    .login-card{background:white;border-radius:20px;padding:48px 40px;width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+    .login-logo{text-align:center;margin-bottom:32px;}
+    .login-logo h1{font-size:28px;font-weight:700;color:var(--teal);letter-spacing:-0.5px;}
+    .login-logo p{font-size:14px;color:var(--muted);margin-top:4px;}
+    .form-group{margin-bottom:20px;}
+    label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;}
+    input[type="text"],input[type="password"],input[type="email"],textarea,select{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s;background:#fafafa;}
+    input:focus,textarea:focus{border-color:var(--teal);background:white;}
+    .error-msg{background:var(--red-bg);color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;display:none;}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;font-family:inherit;}
+    .btn-primary{background:var(--teal);color:white;width:100%;justify-content:center;}
+    .btn-primary:hover{background:var(--teal-dark);transform:translateY(-1px);}
+    .btn-approve{background:var(--green);color:white;}
+    .btn-approve:hover{background:#2f855a;}
+    .btn-reject{background:var(--red);color:white;}
+    .btn-reject:hover{background:#c53030;}
+    .btn-outline{background:white;color:var(--teal);border:1.5px solid var(--teal);}
+    .btn-outline:hover{background:var(--teal-light);}
+    .btn-sm{padding:7px 14px;font-size:13px;}
+
+    /* APP */
+    #app-screen{display:none;}
+    .header{background:linear-gradient(90deg,var(--teal-dark),var(--teal));color:white;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,0.12);position:sticky;top:0;z-index:100;}
+    .header-brand{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px;}
+    .header-sub{font-size:13px;font-weight:400;opacity:0.8;}
+    .header-actions{display:flex;align-items:center;gap:16px;}
+    .admin-badge{background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;}
+    .logout-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:6px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;transition:background 0.2s;}
+    .logout-btn:hover{background:rgba(255,255,255,0.25);}
+    .main{padding:32px;max-width:1400px;margin:0 auto;}
+
+    /* STATS */
+    .stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
+    .stat-card{background:white;border-radius:14px;padding:20px 24px;box-shadow:var(--shadow);display:flex;align-items:center;gap:16px;border-left:4px solid transparent;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}
+    .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.1);}
+    .stat-card.ring{box-shadow:0 0 0 2px var(--teal);}
+    .stat-card.pending{border-left-color:var(--orange);}
+    .stat-card.approved{border-left-color:var(--green);}
+    .stat-card.rejected{border-left-color:var(--red);}
+    .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+    .stat-card.pending .stat-icon{background:var(--orange-bg);}
+    .stat-card.approved .stat-icon{background:var(--green-bg);}
+    .stat-card.rejected .stat-icon{background:var(--red-bg);}
+    .stat-num{font-size:28px;font-weight:700;}
+    .stat-label{font-size:13px;color:var(--muted);font-weight:500;margin-top:2px;}
+
+    /* FILTER */
+    .filter-bar{background:white;border-radius:14px;padding:16px 24px;margin-bottom:20px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;}
+    .filter-bar label{margin:0;white-space:nowrap;}
+    .filter-tabs{display:flex;gap:6px;flex:1;}
+    .filter-tab{padding:7px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--bg);color:var(--muted);font-family:inherit;transition:all 0.2s;}
+    .filter-tab[data-active="pending"]{background:var(--orange-bg);color:var(--orange);}
+    .filter-tab[data-active="approved"]{background:var(--green-bg);color:var(--green);}
+    .filter-tab[data-active="rejected"]{background:var(--red-bg);color:var(--red);}
+    .filter-tab[data-active="all"]{background:var(--teal-light);color:var(--teal);}
+
+    /* LIST */
+    .vendor-list{display:flex;flex-direction:column;gap:14px;}
+    .vendor-card{background:white;border-radius:14px;box-shadow:var(--shadow);overflow:hidden;border:1.5px solid var(--border);transition:box-shadow 0.2s;}
+    .vendor-card:hover{box-shadow:0 8px 32px rgba(0,0,0,0.1);}
+    .vendor-header{display:flex;align-items:center;padding:18px 24px;gap:16px;cursor:pointer;user-select:none;}
+    .vendor-avatar{width:48px;height:48px;border-radius:12px;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--teal);flex-shrink:0;overflow:hidden;}
+    .vendor-avatar img{width:100%;height:100%;object-fit:cover;}
+    .vendor-info{flex:1;min-width:0;}
+    .vendor-name{font-size:15px;font-weight:700;margin-bottom:2px;}
+    .vendor-meta{font-size:13px;color:var(--muted);}
+    .status-badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;flex-shrink:0;}
+    .status-badge.pending{background:var(--orange-bg);color:var(--orange);}
+    .status-badge.approved{background:var(--green-bg);color:var(--green);}
+    .status-badge.rejected{background:var(--red-bg);color:var(--red);}
+    .expand-arrow{color:var(--muted);font-size:18px;transition:transform 0.2s;}
+    .vendor-card.expanded .expand-arrow{transform:rotate(180deg);}
+    .vendor-detail{border-top:1px solid var(--border);display:none;}
+    .vendor-card.expanded .vendor-detail{display:block;}
+
+    /* DETAIL */
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+    .detail-section{padding:24px;}
+    .detail-section:first-child{border-right:1px solid var(--border);}
+    .section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--teal);margin-bottom:16px;}
+    .info-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);gap:12px;}
+    .info-row:last-child{border-bottom:none;}
+    .info-key{font-size:13px;color:var(--muted);flex-shrink:0;}
+    .info-val{font-size:13px;font-weight:500;text-align:right;word-break:break-all;}
+
+    /* DOCUMENTS */
+    .docs-section{padding:24px;border-top:1px solid var(--border);}
+    .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px;margin-top:16px;}
+    .doc-card{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;background:#fafafa;transition:box-shadow 0.2s;cursor:pointer;position:relative;}
+    .doc-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.1);}
+    .doc-preview{height:160px;display:flex;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden;}
+    .doc-preview img{width:100%;height:100%;object-fit:cover;transition:transform 0.2s;}
+    .doc-card:hover .doc-preview img{transform:scale(1.05);}
+    .doc-preview .pdf-icon{font-size:48px;}
+    .doc-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;color:white;font-size:13px;font-weight:600;gap:6px;}
+    .doc-card:hover .doc-overlay{opacity:1;}
+    .doc-label{padding:10px 12px;font-size:12px;font-weight:600;color:var(--text);background:white;border-top:1px solid var(--border);}
+    .no-docs{padding:32px;text-align:center;color:var(--muted);font-size:14px;}
+
+    .doc-status-badge{position:absolute;top:8px;left:8px;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:0.5px;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.15);}
+    .doc-status-badge.pending{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange);}
+    .doc-status-badge.approved{background:var(--green-bg);color:var(--green);border:1px solid var(--green);}
+    .doc-status-badge.rejected{background:var(--red-bg);color:var(--red);border:1px solid var(--red);}
+
+    .doc-rejection-msg{padding:0 12px 10px 12px;font-size:11px;color:var(--red);font-weight:500;background:white;}
+    .doc-action-bar{display:flex;gap:6px;padding:8px 12px;background:#fdfdfd;border-top:1px solid var(--border);}
+    .doc-action-bar .btn{flex:1;justify-content:center;padding:6px 0;font-size:11px;border-radius:6px;}
+
+    /* ACTION BAR */
+    .action-bar{padding:20px 24px;border-top:1px solid var(--border);background:#fafafa;display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;}
+    .action-buttons{display:flex;gap:10px;}
+
+    /* MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px);}
+    .modal-overlay.open{display:flex;}
+    .modal{background:white;border-radius:20px;padding:36px;width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+    .modal h2{font-size:20px;margin-bottom:8px;}
+    .modal p{font-size:14px;color:var(--muted);margin-bottom:20px;}
+    .modal textarea{min-height:100px;resize:vertical;}
+    .modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end;}
+
+    /* LIGHTBOX */
+    .lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:2000;gap:16px;}
+    .lightbox.open{display:flex;}
+    .lightbox img{max-width:90vw;max-height:80vh;object-fit:contain;border-radius:8px;}
+    .lightbox-label{color:white;font-size:15px;font-weight:600;}
+    .lightbox-close{position:absolute;top:20px;right:24px;color:white;font-size:32px;cursor:pointer;background:none;border:none;line-height:1;}
+
+    /* MISC */
+    .loading-state{text-align:center;padding:60px;color:var(--muted);}
+    .spinner{width:40px;height:40px;border:3px solid var(--teal-light);border-top-color:var(--teal);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .empty-state{text-align:center;padding:60px;color:var(--muted);font-size:15px;}
+    .empty-state .emoji{font-size:48px;margin-bottom:12px;}
+    .toast{position:fixed;bottom:24px;right:24px;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:500;color:white;z-index:3000;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;}
+    .toast.show{opacity:1;transform:translateY(0);}
+    .toast.success{background:var(--green);}
+    .toast.error{background:var(--red);}
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>🔐 Woglo Admin</h1>
+      <p>Driver Verification Dashboard</p>
+    </div>
+    <div class="form-group">
+      <label for="api-url">Backend URL</label>
+      <input type="text" id="api-url" value="http://localhost:8080" placeholder="https://your-backend.run.app"/>
+    </div>
+    <div class="form-group">
+      <label for="admin-email">Admin Email</label>
+      <input type="email" id="admin-email" placeholder="admin@woglo.in"/>
+    </div>
+    <div class="form-group">
+      <label for="admin-password">Password</label>
+      <input type="password" id="admin-password" placeholder="••••••••"/>
+    </div>
+    <button class="btn btn-primary" id="login-btn">
+      <span id="login-btn-text">Sign In</span>
+    </button>
+    <div class="error-msg" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <header class="header">
+    <div class="header-brand">
+      🚕 Woglo Admin
+      <span class="header-sub">Driver Verification</span>
+    </div>
+    <div class="header-actions">
+      <span class="admin-badge" id="admin-email-display"></span>
+      <button class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div id="drivers-section">
+      <div class="stats-bar">
+        <div class="stat-card pending" id="stat-pending" data-filter="pending">
+          <div class="stat-icon">⏳</div>
+          <div><div class="stat-num" id="count-pending">—</div><div class="stat-label">Pending Review</div></div>
+        </div>
+        <div class="stat-card approved" id="stat-approved" data-filter="approved">
+          <div class="stat-icon">✅</div>
+          <div><div class="stat-num" id="count-approved">—</div><div class="stat-label">Approved</div></div>
+        </div>
+        <div class="stat-card rejected" id="stat-rejected" data-filter="rejected">
+          <div class="stat-icon">❌</div>
+          <div><div class="stat-num" id="count-rejected">—</div><div class="stat-label">Rejected</div></div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <label>Filter:</label>
+        <div class="filter-tabs">
+          <button class="filter-tab" id="tab-pending"  data-filter="pending"  data-active="pending">⏳ Pending</button>
+          <button class="filter-tab" id="tab-approved" data-filter="approved">✅ Approved</button>
+          <button class="filter-tab" id="tab-rejected" data-filter="rejected">❌ Rejected</button>
+          <button class="filter-tab" id="tab-all"      data-filter="">📋 All</button>
+        </div>
+        <button class="btn btn-outline btn-sm" id="refresh-btn">🔄 Refresh</button>
+      </div>
+
+      <div id="driver-list-container">
+        <div class="loading-state"><div class="spinner"></div><div>Loading drivers…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVER REJECT MODAL -->
+<div class="modal-overlay" id="reject-modal">
+  <div class="modal">
+    <h2>❌ Reject Driver KYC</h2>
+    <p>Please provide a clear reason. The driver will see this message in their app.</p>
+    <div class="form-group">
+      <label for="reject-reason">Rejection Reason</label>
+      <textarea id="reject-reason" placeholder="e.g. Aadhar document is blurry. Please re-upload a clear photo."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="cancel-reject-btn">Cancel</button>
+      <button class="btn btn-reject"  id="confirm-reject-btn">Confirm Reject</button>
+    </div>
+  </div>
+</div>
+
+<!-- DOCUMENT REJECT MODAL -->
+<div class="modal-overlay" id="doc-reject-modal">
+  <div class="modal">
+    <h2>❌ Reject Document</h2>
+    <p>Please provide a clear reason for rejecting this document. The driver will be alerted to re-upload it.</p>
+    <div class="form-group">
+      <label for="doc-reject-reason">Rejection Reason</label>
+      <textarea id="doc-reject-reason" placeholder="e.g. Document image is blurry. Please re-upload a clear photo."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="cancel-doc-reject-btn">Cancel</button>
+      <button class="btn btn-reject"  id="confirm-doc-reject-btn">Confirm Reject</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightbox-close">✕</button>
+  <div class="lightbox-label" id="lightbox-label"></div>
+  <img id="lightbox-img" src="" alt="Document"/>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -10,6 +10,7 @@ const kycSchema = new mongoose.Schema({
   fileUrlFront: { type: String, required: true },
   fileUrlBack: { type: String }, // Optional, not all docs have back side
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  rejectionReason: { type: String, default: '' },
   uploadedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

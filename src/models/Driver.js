@@ -33,6 +33,8 @@ const driverSchema = new mongoose.Schema({
   languages: [{ type: String }],
   rating: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false },
+  kycStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  kycRejectionReason: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
