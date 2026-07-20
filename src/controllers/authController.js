@@ -12,7 +12,7 @@ const client = new OAuth2Client(audiences[0]);
 // @access  Public
 exports.googleLoginOrSignup = async (req, res, next) => {
   try {
-    const { idToken } = req.body;
+    const { idToken, mode } = req.body;
 
     if (!idToken) {
       res.status(400);
@@ -51,6 +51,13 @@ exports.googleLoginOrSignup = async (req, res, next) => {
     let driver = await Driver.findOne({ email });
 
     if (!driver) {
+      if (mode === 'login') {
+        // Login flow must not silently create an account — the user needs
+        // to go through Sign Up explicitly.
+        res.status(404);
+        throw new Error('No account found for this Google account. Please sign up first.');
+      }
+
       // Signup flow
       driver = await Driver.create({
         name,
