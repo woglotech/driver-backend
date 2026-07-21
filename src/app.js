@@ -9,7 +9,12 @@ const app = express();
 // Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'];
+// `cors` only reflects an Origin it finds as an exact match in an array,
+// so a literal ['*'] combined with credentials:true silently sends no
+// Access-Control-Allow-Origin header at all (spec forbids literal '*' with
+// credentials). `origin: true` reflects whatever Origin was sent, which is
+// the correct way to allow any origin while still supporting credentials.
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true;
 app.use(cors({
   origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
