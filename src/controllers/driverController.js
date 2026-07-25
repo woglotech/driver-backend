@@ -87,9 +87,12 @@ exports.updateAccountProfile = async (req, res, next) => {
       }
       if (req.body.bankDetails) {
         driver.bankDetails = {
+          accountHolderName: req.body.bankDetails.accountHolderName || driver.bankDetails?.accountHolderName,
           bankName: req.body.bankDetails.bankName || driver.bankDetails?.bankName,
           accountNumber: req.body.bankDetails.accountNumber || driver.bankDetails?.accountNumber,
-          ifscCode: req.body.bankDetails.ifscCode || driver.bankDetails?.ifscCode
+          ifscCode: req.body.bankDetails.ifscCode || driver.bankDetails?.ifscCode,
+          branchName: req.body.bankDetails.branchName || driver.bankDetails?.branchName,
+          accountType: req.body.bankDetails.accountType || driver.bankDetails?.accountType
         };
       }
       if (req.body.languages !== undefined) {

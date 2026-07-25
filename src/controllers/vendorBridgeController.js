@@ -10,10 +10,38 @@
  *   POST /assign-vehicle       - Update a driver's vehicle record with assignment details
  */
 const Driver = require('../models/Driver');
+const Kyc = require('../models/Kyc');
 const VendorRequest = require('../models/VendorRequest');
 const Vehicle = require('../models/Vehicle');
 const Event = require('../models/Event');
 const Notification = require('../models/Notification');
+
+// ── Per-document KYC status for a set of drivers ───────────────────────────
+// Mirrors adminController's recomputeDriverKycStatus "latest entry wins"
+// logic, but keyed per document type instead of collapsed into one overall
+// status, so the vendor app can show real admin-reviewed status per document.
+async function getKycStatusByDriver(driverIds) {
+  const docs = await Kyc.find({ driver: { $in: driverIds } })
+    .sort({ uploadedAt: 1 })
+    .lean();
+
+  const byDriver = {};
+  docs.forEach((d) => {
+    const key = d.driver.toString();
+    if (!byDriver[key]) byDriver[key] = {};
+    byDriver[key][d.type] = d.status; // later (later-uploaded) entries overwrite
+  });
+  return byDriver;
+}
+
+function buildDocumentStatus(kycByType) {
+  const get = (type) => (kycByType && kycByType[type]) || 'not_uploaded';
+  return {
+    license: get('Driving License'),
+    aadhaar: get('Aadhar Card'),
+    pan: get('PAN Card'),
+  };
+}
 
 // ──────────────────────────────────────────────────────────────────
 // GET /api/v1/vendor/drivers
@@ -36,12 +64,12 @@ exports.getAvailableDrivers = async (req, res, next) => {
     }
 
     const drivers = await Driver.find(query).select('-password').lean();
+    const driverIds = drivers.map(d => d._id);
 
     // If vendorId is provided, get their relationship status with these drivers
     let vendorRequests = [];
     let vendorVehicles = [];
     if (vendorId) {
-      const driverIds = drivers.map(d => d._id);
       vendorRequests = await VendorRequest.find({
         vendorId,
         driver: { $in: driverIds },
@@ -51,6 +79,8 @@ exports.getAvailableDrivers = async (req, res, next) => {
         driver: { $in: driverIds },
       }).lean();
     }
+
+    const kycByDriver = await getKycStatusByDriver(driverIds);
 
     const mapped = drivers.map(d => {
       let invitationStatus = null;
@@ -85,6 +115,8 @@ exports.getAvailableDrivers = async (req, res, next) => {
         photoUrl: d.profilePicture || null,
         rating: d.rating || 0,
         isVerified: d.isVerified || false,
+        documentStatus: buildDocumentStatus(kycByDriver[d._id.toString()]),
+        languages: d.languages || [],
         invitationStatus, // Real partnership status
         experience: null,
         totalTrips: null,
@@ -414,6 +446,12 @@ exports.getPartneredDrivers = async (req, res, next) => {
       .populate('driver')
       .lean();
 
+    const driverIds = [
+      ...requests.filter(r => r.driver).map(r => r.driver._id),
+      ...vehicles.filter(v => v.driver).map(v => v.driver._id),
+    ];
+    const kycByDriver = await getKycStatusByDriver(driverIds);
+
     const driverMap = new Map();
 
     // Process requests first (set base status)
@@ -421,7 +459,7 @@ exports.getPartneredDrivers = async (req, res, next) => {
       if (r.driver) {
         const d = r.driver;
         const status = (r.status || 'pending').toLowerCase();
-        
+
         driverMap.set(d._id.toString(), {
           id: d._id.toString(),
           driverId: d.driverId,
@@ -433,6 +471,8 @@ exports.getPartneredDrivers = async (req, res, next) => {
           photoUrl: d.profilePicture || null,
           rating: d.rating || 0,
           isVerified: d.isVerified || false,
+          documentStatus: buildDocumentStatus(kycByDriver[d._id.toString()]),
+          languages: d.languages || [],
           invitationStatus: status, // 'pending' or 'accepted'
           assignedVehicleNumber: null,
           assignedFromDate: r.assignedFromDate || null,
@@ -456,6 +496,8 @@ exports.getPartneredDrivers = async (req, res, next) => {
           photoUrl: d.profilePicture || null,
           rating: d.rating || 0,
           isVerified: d.isVerified || false,
+          documentStatus: buildDocumentStatus(kycByDriver[d._id.toString()]),
+          languages: d.languages || [],
           invitationStatus: 'accepted',
           assignedVehicleNumber: v.licensePlate,
           assignedFromDate: v.assignedFromDate,

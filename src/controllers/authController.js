@@ -380,7 +380,7 @@ exports.loginOrSignupPhone = async (req, res, next) => {
 // @access  Public
 exports.verifyOtp = async (req, res, next) => {
   try {
-    const { phone: rawPhone, otp } = req.body;
+    const { phone: rawPhone, otp, mode } = req.body;
     const phone = Driver.normalizePhone(rawPhone);
 
     if (!phone || !otp) {
@@ -403,6 +403,13 @@ exports.verifyOtp = async (req, res, next) => {
     let driver = await Driver.findOne({ phone });
 
     if (!driver) {
+      if (mode === 'login') {
+        // Login flow must not silently create an account — the user needs
+        // to go through Sign Up explicitly (mirrors googleLoginOrSignup).
+        res.status(404);
+        throw new Error('No account found for this phone number. Please sign up first.');
+      }
+
       // Signup Flow (Minimal profile, can be completed later)
       driver = await Driver.create({
         phone,

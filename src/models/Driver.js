@@ -25,9 +25,12 @@ const driverSchema = new mongoose.Schema({
     panCardNumber: { type: String }
   },
   bankDetails: {
+    accountHolderName: { type: String },
     bankName: { type: String },
     accountNumber: { type: String },
-    ifscCode: { type: String }
+    ifscCode: { type: String },
+    branchName: { type: String },
+    accountType: { type: String }
   },
   profilePicture: { type: String },
   languages: [{ type: String }],
