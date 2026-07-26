@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 
 const app = express();
 
@@ -28,9 +27,6 @@ app.use(morgan('dev'));
 
 // Static folder configuration for uploads
 app.use('/uploads', express.static('uploads'));
-
-// Admin panel (static SPA)
-app.use('/admin', express.static(path.join(__dirname, '../admin-panel')));
 
 // Health Route
 app.get('/', (req, res) => {
