@@ -29,7 +29,10 @@ exports.getMyBookings = async (req, res, next) => {
     const bookings = await bridge.fetchDriverBookings(req.driver._id, req.query.status);
     res.json({ success: true, data: bookings });
   } catch (error) {
-    res.status(error.status || 500).json({ success: false, message: error.message });
+    res.status(error.status || error.response?.status || 500).json({
+      success: false,
+      message: error.response?.data?.message || error.message,
+    });
   }
 };
 
@@ -38,7 +41,10 @@ exports.getBookingDetail = async (req, res, next) => {
     const booking = await assertOwnsBooking(req.params.id, req.driver._id);
     res.json({ success: true, data: booking });
   } catch (error) {
-    res.status(error.status || 500).json({ success: false, message: error.message });
+    res.status(error.status || error.response?.status || 500).json({
+      success: false,
+      message: error.response?.data?.message || error.message,
+    });
   }
 };
 
