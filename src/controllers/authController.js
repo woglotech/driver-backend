@@ -1,7 +1,22 @@
+const crypto = require('crypto');
 const Driver = require('../models/Driver');
 const Kyc = require('../models/Kyc');
 const Otp = require('../models/Otp');
 const generateToken = require('../utils/generateToken');
+
+/// Stamps a fresh session id on the driver and returns a token embedding
+/// it — protect() rejects any older token once this rotates, so logging in
+/// on a new device kicks out any other device's session. Callers that
+/// already have an unsaved `driver` mutation pending (e.g. profile fields
+/// just set) can skip the extra save by setting currentSessionId
+/// themselves before their own save() and calling generateToken directly;
+/// this helper is for the common case of "driver is otherwise unchanged,
+/// just issue a session."
+async function issueDriverSession(driver) {
+  driver.currentSessionId = crypto.randomUUID();
+  await driver.save();
+  return generateToken(driver._id, driver.currentSessionId);
+}
 const { sendOtpViaMsg91, sendSignupEmailViaMsg91, sendForgotPasswordEmailViaMsg91 } = require('../utils/otpService');
 const { OAuth2Client } = require('google-auth-library');
 const audiences = process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.split(',').map(id => id.trim()).filter(id => id.length > 0) : [];
@@ -74,6 +89,8 @@ exports.googleLoginOrSignup = async (req, res, next) => {
       }
     }
 
+    const token = await issueDriverSession(driver);
+
     res.status(200).json({
       _id: driver._id,
       driverId: driver.driverId,
@@ -82,7 +99,7 @@ exports.googleLoginOrSignup = async (req, res, next) => {
       phone: driver.phone || null,
       profilePicture: driver.profilePicture,
       isVerified: driver.isVerified,
-      token: generateToken(driver._id),
+      token,
       needsPhone: !driver.phone // Tell frontend to prompt for phone if missing
     });
   } catch (error) {
@@ -157,10 +174,12 @@ exports.verifyEmailOtp = async (req, res, next) => {
     await Otp.deleteOne({ _id: otpRecord._id });
 
     // Create Driver
+    const sessionId = crypto.randomUUID();
     const driver = await Driver.create({
       name,
       email,
       password,
+      currentSessionId: sessionId,
     });
 
     res.status(201).json({
@@ -170,7 +189,7 @@ exports.verifyEmailOtp = async (req, res, next) => {
       email: driver.email,
       phone: driver.phone,
       profilePicture: driver.profilePicture,
-      token: generateToken(driver._id),
+      token: generateToken(driver._id, sessionId),
     });
   } catch (error) {
     next(error);
@@ -237,6 +256,7 @@ exports.loginDriver = async (req, res, next) => {
     const driver = await Driver.findOne(query);
 
     if (driver && (await driver.matchPassword(password))) {
+      const token = await issueDriverSession(driver);
       res.json({
         _id: driver._id,
         driverId: driver.driverId,
@@ -245,7 +265,7 @@ exports.loginDriver = async (req, res, next) => {
         phone: driver.phone,
         profilePicture: driver.profilePicture,
         isVerified: driver.isVerified,
-        token: generateToken(driver._id),
+        token,
       });
     } else {
       res.status(401);
@@ -418,6 +438,8 @@ exports.verifyOtp = async (req, res, next) => {
       });
     }
 
+    const token = await issueDriverSession(driver);
+
     res.status(200).json({
       _id: driver._id,
       driverId: driver.driverId,
@@ -425,7 +447,7 @@ exports.verifyOtp = async (req, res, next) => {
       phone: driver.phone,
       profilePicture: driver.profilePicture,
       isVerified: driver.isVerified,
-      token: generateToken(driver._id),
+      token,
     });
   } catch (error) {
     next(error);
@@ -469,6 +491,7 @@ exports.completeDriverRegistration = async (req, res, next) => {
 
     driver.phone = phone;
     driver.isVerified = true;
+    driver.currentSessionId = crypto.randomUUID();
     const updatedDriver = await driver.save();
 
     // Delete OTP record after successful linking
@@ -484,7 +507,7 @@ exports.completeDriverRegistration = async (req, res, next) => {
         email: updatedDriver.email,
         phone: updatedDriver.phone,
         isVerified: updatedDriver.isVerified,
-        token: generateToken(updatedDriver._id),
+        token: generateToken(updatedDriver._id, updatedDriver.currentSessionId),
       }
     });
   } catch (error) {

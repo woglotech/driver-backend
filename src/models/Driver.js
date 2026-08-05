@@ -38,7 +38,13 @@ const driverSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   kycStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   kycRejectionReason: { type: String, default: '' },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  // Stamped fresh on every login/token-issuing action; embedded in the JWT
+  // as `sid`. protect() rejects any token whose sid doesn't match this
+  // current value, so logging in on a new device invalidates every other
+  // device's session — enforces single-device login without needing a
+  // server-side token blocklist.
+  currentSessionId: { type: String },
 }, { timestamps: true });
 
 // Helper to normalize phone numbers to 91xxxxxxxxxx format
