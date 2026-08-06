@@ -64,10 +64,24 @@ driverSchema.pre('save', async function() {
     this.phone = mongoose.model('Driver').normalizePhone(this.phone);
   }
 
-  // Generate Custom User ID if it doesn't exist
+  // Generate Custom User ID if it doesn't exist. Checked against existing
+  // driverIds before assigning — a blind random pick with no check (the
+  // previous behavior) starts colliding often enough to matter once the
+  // driver count climbs into the hundreds, and each collision used to crash
+  // the signup with a raw duplicate-key error. A residual race (two signups
+  // picking the same id in the same instant) is still possible; that's
+  // caught by the unique index and turned into a friendly retry message by
+  // errorMiddleware.
   if (!this.driverId) {
-    const randomNum = Math.floor(10000 + Math.random() * 90000); // 5 digit random number
-    this.driverId = `WOG-DRV-${randomNum}`;
+    const Driver = mongoose.model('Driver');
+    let candidateId;
+    for (let attempts = 0; attempts < 5; attempts++) {
+      const randomNum = Math.floor(10000 + Math.random() * 90000); // 5 digit random number
+      candidateId = `WOG-DRV-${randomNum}`;
+      const taken = await Driver.exists({ driverId: candidateId });
+      if (!taken) break;
+    }
+    this.driverId = candidateId;
   }
 
   // Hash password only if modified

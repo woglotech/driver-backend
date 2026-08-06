@@ -40,6 +40,7 @@ const tripRoutes = require('./routes/tripRoutes');
 const vendorBridgeRoutes = require('./routes/vendorBridgeRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const driverBookingRoutes = require('./routes/driverBookingRoutes');
+const appVersionRoutes = require('./routes/appVersionRoutes');
 
 // Mount Routes
 app.use('/api/v1/auth', authRoutes);
@@ -47,6 +48,7 @@ app.use('/api/v1/driver', driverRoutes);
 app.use('/api/v1/trips', tripRoutes);
 app.use('/api/v1/vendor', vendorBridgeRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/app', appVersionRoutes);
 // Real, booking-backed trips (separate from /api/v1/trips, the unrelated
 // pre-existing itinerary/demo Trip system).
 app.use('/api/v1/driver-bookings', driverBookingRoutes);

@@ -255,7 +255,10 @@ exports.loginDriver = async (req, res, next) => {
 
     const driver = await Driver.findOne(query);
 
-    if (driver && (await driver.matchPassword(password))) {
+    // driver.password is unset for accounts created via Google/phone-OTP
+    // that never set a password — skip matchPassword() in that case rather
+    // than letting bcrypt throw on a missing hash.
+    if (driver && driver.password && (await driver.matchPassword(password))) {
       const token = await issueDriverSession(driver);
       res.json({
         _id: driver._id,
