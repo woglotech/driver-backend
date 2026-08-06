@@ -11,6 +11,7 @@ router.use(protect);
 router.get('/', driverBookingController.getMyBookings);
 router.get('/:id', driverBookingController.getBookingDetail);
 router.post('/:id/start', driverBookingController.startTrip);
+router.post('/:id/pickup-done', driverBookingController.pickupDone);
 router.post('/:id/complete', driverBookingController.completeTrip);
 router.patch('/:id/location', driverBookingController.updateLocation);
 

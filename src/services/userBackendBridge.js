@@ -56,6 +56,16 @@ async function startTrip(bookingId, startOdometerKm) {
   return response.data?.data || null;
 }
 
+async function pickupDone(bookingId) {
+  assertConfigured();
+  const response = await axios.post(
+    `${USER_BACKEND_URL}/api/v1/bookings/${bookingId}/pickup-done`,
+    {},
+    { headers: headers(), timeout: 10000 }
+  );
+  return response.data?.data || null;
+}
+
 async function completeTrip(bookingId, endOdometerKm) {
   assertConfigured();
   const response = await axios.post(
@@ -80,6 +90,7 @@ module.exports = {
   fetchDriverBookings,
   fetchBookingDriverView,
   startTrip,
+  pickupDone,
   completeTrip,
   updateLocation,
 };
