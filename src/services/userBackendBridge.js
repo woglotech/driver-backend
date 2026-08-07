@@ -76,6 +76,16 @@ async function completeTrip(bookingId, endOdometerKm) {
   return response.data?.data || null;
 }
 
+async function cancelTrip(bookingId, reason) {
+  assertConfigured();
+  const response = await axios.post(
+    `${USER_BACKEND_URL}/api/v1/bookings/${bookingId}/driver-cancel`,
+    { reason },
+    { headers: headers(), timeout: 10000 }
+  );
+  return response.data?.data || null;
+}
+
 async function updateLocation(bookingId, lat, lng) {
   assertConfigured();
   const response = await axios.patch(
@@ -92,5 +102,6 @@ module.exports = {
   startTrip,
   pickupDone,
   completeTrip,
+  cancelTrip,
   updateLocation,
 };

@@ -89,6 +89,20 @@ exports.completeTrip = async (req, res, next) => {
   }
 };
 
+exports.cancelTrip = async (req, res, next) => {
+  try {
+    await assertOwnsBooking(req.params.id, req.driver._id);
+    const { reason } = req.body;
+    const updated = await bridge.cancelTrip(req.params.id, reason);
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    res.status(error.status || error.response?.status || 500).json({
+      success: false,
+      message: error.response?.data?.message || error.message,
+    });
+  }
+};
+
 exports.updateLocation = async (req, res, next) => {
   try {
     await assertOwnsBooking(req.params.id, req.driver._id);

@@ -34,6 +34,12 @@ router.get('/drivers', vendorBridgeController.getAvailableDrivers);
 // POST /api/v1/vendor/send-request
 router.post('/send-request', vendorBridgeController.sendVendorRequest);
 
+// POST /api/v1/vendor/booking-assigned — called by the customer backend
+router.post('/booking-assigned', vendorBridgeController.notifyBookingAssigned);
+
+// POST /api/v1/vendor/booking-cancelled — called by the customer backend
+router.post('/booking-cancelled', vendorBridgeController.notifyBookingCancelled);
+
 // GET /api/v1/vendor/driver-calendar/:driverId
 router.get('/driver-calendar/:driverId', vendorBridgeController.getDriverCalendar);
 

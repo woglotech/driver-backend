@@ -210,6 +210,82 @@ exports.sendVendorRequest = async (req, res, next) => {
 };
 
 // ──────────────────────────────────────────────────────────────────
+// POST /api/v1/vendor/booking-assigned
+// Body: { driverId, bookingId, message }
+// Called by the CUSTOMER backend whenever a driver is newly assigned to a
+// booking. Previously the customer backend called POST /send-request for
+// this, which is actually the unrelated vendor-partnership-invite endpoint
+// (requires vendorId/vendorName, creates a VendorRequest) — every one of
+// those calls 400'd silently, so a driver never got notified of a new
+// booking at all. This is a dedicated endpoint for the real use case,
+// mirroring notifyBookingCancelled below.
+// ──────────────────────────────────────────────────────────────────
+exports.notifyBookingAssigned = async (req, res, next) => {
+  try {
+    const { driverId, message } = req.body;
+    if (!driverId) {
+      return res.status(400).json({ success: false, error: 'driverId is required' });
+    }
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ success: false, error: 'Driver not found' });
+    }
+
+    await Notification.create({
+      driver: driverId,
+      title: 'New Trip Assigned',
+      message: message || 'You have been assigned a new trip.',
+      type: 'BOOKING_ASSIGNED',
+      isRead: false,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────
+// POST /api/v1/vendor/booking-cancelled
+// Body: { driverId, bookingId, cancelledBy, cancellationReason }
+// Called by the CUSTOMER backend (not the vendor backend, despite this
+// route group's name — it authenticates with the same shared bridge
+// secret) whenever a booking already assigned to a driver gets cancelled
+// by the customer or the vendor. The driver app has no push channel of
+// its own, so this is the only way it learns about it before the trip
+// just silently disappears from its list on next poll.
+// ──────────────────────────────────────────────────────────────────
+exports.notifyBookingCancelled = async (req, res, next) => {
+  try {
+    const { driverId, cancelledBy, cancellationReason } = req.body;
+    if (!driverId) {
+      return res.status(400).json({ success: false, error: 'driverId is required' });
+    }
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ success: false, error: 'Driver not found' });
+    }
+
+    const who = cancelledBy === 'vendor' ? 'the vendor' : 'the customer';
+    await Notification.create({
+      driver: driverId,
+      title: 'Trip Cancelled',
+      message: cancellationReason
+        ? `Your trip was cancelled by ${who}: ${cancellationReason}`
+        : `Your trip was cancelled by ${who}.`,
+      type: 'BOOKING_CANCELLED',
+      isRead: false,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────
 // GET /api/v1/vendor/driver-calendar/:driverId
 // Returns the driver's upcoming calendar events so vendor can see
 // which dates the driver is available / on leave / booked

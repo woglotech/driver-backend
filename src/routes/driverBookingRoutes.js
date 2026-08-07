@@ -13,6 +13,7 @@ router.get('/:id', driverBookingController.getBookingDetail);
 router.post('/:id/start', driverBookingController.startTrip);
 router.post('/:id/pickup-done', driverBookingController.pickupDone);
 router.post('/:id/complete', driverBookingController.completeTrip);
+router.post('/:id/cancel', driverBookingController.cancelTrip);
 router.patch('/:id/location', driverBookingController.updateLocation);
 
 module.exports = router;
