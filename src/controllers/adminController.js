@@ -123,9 +123,18 @@ exports.listDrivers = async (req, res) => {
         .select('-password')
         .sort({ updatedAt: -1 })
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(Number(limit))
+        .lean(),
       Driver.countDocuments(filter)
     ]);
+
+    const docCounts = await Kyc.aggregate([
+      { $match: { driver: { $in: drivers.map((d) => d._id) } } },
+      { $group: { _id: '$driver', count: { $sum: 1 } } },
+    ]);
+    const countByDriver = {};
+    docCounts.forEach((c) => { countByDriver[c._id.toString()] = c.count; });
+    drivers.forEach((d) => { d.docCount = countByDriver[d._id.toString()] || 0; });
 
     res.json({
       success: true,
