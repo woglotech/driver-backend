@@ -518,6 +518,112 @@ exports.completeDriverRegistration = async (req, res, next) => {
   }
 };
 
+// @desc    Complete profile right after phone signup — phone signup (see
+// verifyOtp above) creates a minimal account with just a phone number and a
+// placeholder name, with no email/password at all, so the driver could
+// never log in via the email option. This sets real name/email/password on
+// that same account so both login paths work afterward.
+// @route   PUT /api/v1/auth/complete-profile
+// @access  Private
+exports.completeProfile = async (req, res, next) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      res.status(400);
+      throw new Error('Please provide name, email, and password');
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      res.status(400);
+      throw new Error('Please provide a valid email address');
+    }
+    if (password.length < 8) {
+      res.status(400);
+      throw new Error('Password must be at least 8 characters');
+    }
+
+    const emailTaken = await Driver.findOne({ email, _id: { $ne: req.driver._id } });
+    if (emailTaken) {
+      res.status(400);
+      throw new Error('An account with this email already exists');
+    }
+
+    const driver = await Driver.findById(req.driver._id);
+    if (!driver) {
+      res.status(404);
+      throw new Error('Driver not found');
+    }
+
+    driver.name = name;
+    driver.email = email;
+    driver.password = password; // pre-save hook hashes it
+    await driver.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile completed successfully',
+      data: {
+        _id: driver._id,
+        driverId: driver.driverId,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+        profilePicture: driver.profilePicture,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Set phone number on an account created via email signup (which
+// has name/email/password but no phone at all — see verifyEmailOtp). Saved
+// as entered, no OTP verification of the number itself — an explicit
+// product decision to keep this a single-screen step rather than requiring
+// another OTP round-trip.
+// @route   PUT /api/v1/auth/complete-phone
+// @access  Private
+exports.completePhone = async (req, res, next) => {
+  try {
+    const phone = Driver.normalizePhone(req.body.phone);
+
+    if (!phone || phone.length !== 12) {
+      res.status(400);
+      throw new Error('Please provide a valid 10-digit phone number');
+    }
+
+    const phoneTaken = await Driver.findOne({ phone, _id: { $ne: req.driver._id } });
+    if (phoneTaken) {
+      res.status(400);
+      throw new Error('This phone number is already linked to another account');
+    }
+
+    const driver = await Driver.findById(req.driver._id);
+    if (!driver) {
+      res.status(404);
+      throw new Error('Driver not found');
+    }
+
+    driver.phone = phone;
+    await driver.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Phone number saved successfully',
+      data: {
+        _id: driver._id,
+        driverId: driver.driverId,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+        profilePicture: driver.profilePicture,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Upload KYC document
 // @route   POST /api/v1/auth/upload-driver-kyc
 // @access  Private
