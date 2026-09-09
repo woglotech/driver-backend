@@ -7,6 +7,7 @@ const { uploadKyc } = require('../config/multerConfig');
 
 router.post('/signup/email', authController.signupEmail);
 router.post('/google', authController.googleLoginOrSignup);
+router.post('/apple', authController.appleLoginOrSignup);
 router.post('/verify-email-otp', authController.verifyEmailOtp);
 router.post('/resend-email-otp', authController.resendEmailOtp);
 router.post('/login/driver', authController.loginDriver);

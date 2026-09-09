@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const appleSignin = require('apple-signin-auth');
 const Driver = require('../models/Driver');
 const Kyc = require('../models/Kyc');
 const Otp = require('../models/Otp');
@@ -101,6 +102,80 @@ exports.googleLoginOrSignup = async (req, res, next) => {
       isVerified: driver.isVerified,
       token,
       needsPhone: !driver.phone // Tell frontend to prompt for phone if missing
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Login or Signup with Sign in with Apple
+// @route   POST /api/v1/auth/apple
+// @access  Public
+exports.appleLoginOrSignup = async (req, res, next) => {
+  try {
+    const { identityToken, fullName, mode } = req.body;
+
+    if (!identityToken) {
+      res.status(400);
+      throw new Error('Please provide an Apple identity token');
+    }
+
+    // Native iOS apps get the app's bundle ID as the token's audience (not
+    // a Services ID — that's only for the web/JS flow, which this isn't).
+    const payload = await appleSignin.verifyIdToken(identityToken, {
+      audience: 'com.woglotech.driver',
+      ignoreExpiration: false,
+    });
+
+    const appleId = payload.sub;
+    // Apple discloses email only on the FIRST authorization for a given
+    // Apple ID + app; returning sign-ins carry just `sub`, so appleId (not
+    // email) is the durable key to match on.
+    let driver = await Driver.findOne({ appleId });
+
+    if (!driver && payload.email) {
+      const emailNorm = payload.email.toLowerCase().trim();
+      driver = await Driver.findOne({ email: emailNorm });
+      if (driver) {
+        // Existing account (e.g. signed up via Google/email) linking Apple
+        // as a sign-in method for the first time.
+        driver.appleId = appleId;
+        await driver.save();
+      }
+    }
+
+    if (!driver) {
+      if (mode === 'login') {
+        res.status(404);
+        throw new Error('No account found for this Apple ID. Please sign up first.');
+      }
+      if (!payload.email) {
+        // First-ever Apple auth for this ID with no email in the token, and
+        // no account to fall back to — nothing usable to create one from.
+        res.status(400);
+        throw new Error('Could not get email from Apple. Please try again or use a different sign-up method.');
+      }
+
+      driver = await Driver.create({
+        name: fullName || `User-${appleId.slice(-6)}`,
+        email: payload.email.toLowerCase().trim(),
+        appleId,
+        isVerified: true, // Apple accounts are implicitly verified for email
+      });
+    }
+
+    const token = await issueDriverSession(driver);
+
+    res.status(200).json({
+      _id: driver._id,
+      driverId: driver.driverId,
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone || null,
+      profilePicture: driver.profilePicture,
+      isVerified: driver.isVerified,
+      token,
+      needsPhone: !driver.phone
     });
   } catch (error) {
     next(error);
