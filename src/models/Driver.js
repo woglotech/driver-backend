@@ -7,6 +7,9 @@ const driverSchema = new mongoose.Schema({
   email: { type: String, unique: true, sparse: true },
   phone: { type: String, unique: true, sparse: true },
   password: { type: String },
+  // Apple's `sub` claim — stable per Apple ID + this app, unlike email which
+  // Apple only discloses on the very first authorization.
+  appleId: { type: String, unique: true, sparse: true },
   dob: { type: Date },
   address: {
     line1: { type: String },
