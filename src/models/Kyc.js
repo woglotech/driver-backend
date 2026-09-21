@@ -14,4 +14,8 @@ const kycSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
+// Every admin driver-list request counts KYC docs per driver ($group by
+// driver); without this it scans the whole (base64-heavy) collection each time.
+kycSchema.index({ driver: 1 });
+
 module.exports = mongoose.model('Kyc', kycSchema);

@@ -10,6 +10,7 @@ router.post('/login', adminController.login);
 // Drivers / KYC
 router.get('/drivers', protectAdmin, adminController.listDrivers);
 router.get('/drivers/:driverId', protectAdmin, adminController.getDriver);
+router.put('/drivers/:driverId', protectAdmin, adminController.updateDriver);
 router.put('/drivers/:driverId/approve', protectAdmin, adminController.approveDriver);
 router.put('/drivers/:driverId/kyc/:kycId', protectAdmin, adminController.updateKycDocStatus);
 
