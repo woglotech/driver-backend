@@ -21,7 +21,15 @@ const Notification = require('../models/Notification');
 // logic, but keyed per document type instead of collapsed into one overall
 // status, so the vendor app can show real admin-reviewed status per document.
 async function getKycStatusByDriver(driverIds) {
+  // Only driver/type/status/uploadedAt are ever read below — the projection
+  // excludes fileUrlFront/fileUrlBack (full base64 document images), which
+  // is what was making this scale badly: every "browse available drivers"
+  // request was pulling every driver's every KYC document's full image
+  // bytes just to compute a pending/approved/rejected status, and that
+  // alone was enough to blow past the vendor backend's 10s timeout to this
+  // endpoint as the driver/document count grew.
   const docs = await Kyc.find({ driver: { $in: driverIds } })
+    .select('driver type status uploadedAt')
     .sort({ uploadedAt: 1 })
     .lean();
 
@@ -63,7 +71,17 @@ exports.getAvailableDrivers = async (req, res, next) => {
       };
     }
 
-    const drivers = await Driver.find(query).select('-password').lean();
+    // Without a search term this returned literally every driver in the
+    // database, unbounded — fine when the fleet was small, but this is
+    // exactly the "database got too large" scaling problem: as the driver
+    // count grew, that full scan plus everything downstream started
+    // blowing past the vendor backend's 10s timeout to this endpoint. A
+    // search term already narrows results in practice; cap the unfiltered
+    // browse case so this stays fast regardless of fleet size.
+    const drivers = await Driver.find(query)
+      .select('-password')
+      .limit(search && search.trim() ? 0 : 300)
+      .lean();
     const driverIds = drivers.map(d => d._id);
 
     // If vendorId is provided, get their relationship status with these drivers
