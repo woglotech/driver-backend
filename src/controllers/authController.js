@@ -443,12 +443,26 @@ exports.resetPassword = async (req, res, next) => {
 // @access  Public
 exports.loginOrSignupPhone = async (req, res, next) => {
   try {
-    const { phone: rawPhone } = req.body;
+    const { phone: rawPhone, mode } = req.body;
     const phone = Driver.normalizePhone(rawPhone);
 
     if (!phone) {
       res.status(400);
       throw new Error('Please provide a phone number');
+    }
+
+    // ── Account-existence check for LOGIN flow ───────────────────────────
+    // Previously this endpoint sent a real WhatsApp OTP (real MSG91 cost)
+    // unconditionally, for any phone number — the "no account" rejection
+    // only happened later in verifyOtp, after the OTP had already gone
+    // out. Mirrors the check verifyOtp already does before creating a
+    // driver, just moved earlier so we never send the OTP at all.
+    if (mode === 'login') {
+      const existingDriver = await Driver.findOne({ phone });
+      if (!existingDriver) {
+        res.status(404);
+        throw new Error('No account found for this phone number. Please sign up first.');
+      }
     }
 
     // Generate 6-digit OTP
