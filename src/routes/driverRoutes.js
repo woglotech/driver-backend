@@ -5,6 +5,11 @@ const driverController = require('../controllers/driverController');
 const { protect } = require('../middlewares/authMiddleware');
 const { uploadProfile } = require('../config/multerConfig');
 
+// Public — served via <img>/Image.network from list views (vendor browse,
+// admin panel), which don't send an auth header. Registered before the
+// protect() gate below so it's exempt from it.
+router.get('/:id/photo', driverController.getDriverPhoto);
+
 router.use(protect); // Protect all routes in this file
 
 router.get('/dashboard', driverController.getDashboard);

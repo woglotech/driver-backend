@@ -10,6 +10,44 @@ const Kyc = require('../models/Kyc');
 const Otp = require('../models/Otp');
 const Trip = require('../models/Trip');
 
+// @desc    Serve a driver's profile picture — a proxy URL for it instead of
+//          embedding the (potentially large, uncompressed) base64 string in
+//          every driver list response. profilePicture can be either a raw
+//          base64 data URI (uploadProfilePicture below) or an already-
+//          hosted /uploads/... path; this handles both, same pattern as the
+//          vendor backend's getVehiclePhoto.
+// @route   GET /api/v1/driver/:id/photo
+// @access  Public (embedded via <img>/Image.network, no auth header sent)
+exports.getDriverPhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const driver = await Driver.findById(id).select('profilePicture');
+    const raw = driver?.profilePicture;
+    if (!raw) {
+      return res.status(404).json({ success: false, error: 'Photo not found.' });
+    }
+
+    if (!raw.startsWith('data:')) {
+      // Already a hosted URL/relative path (e.g. /uploads/profiles/x.jpg).
+      const url = raw.startsWith('http') ? raw : `${req.protocol}://${req.get('host')}${raw}`;
+      return res.redirect(url);
+    }
+
+    const match = raw.match(/^data:([\w/.+-]+);base64,(.+)$/);
+    if (!match) {
+      return res.status(404).json({ success: false, error: 'Photo not found.' });
+    }
+    const [, mimeType, base64Data] = match;
+    res.set('Content-Type', mimeType);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.send(Buffer.from(base64Data, 'base64'));
+  } catch (err) {
+    console.error('getDriverPhoto error:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
 // @desc    Get driver profile
 // @route   GET /api/v1/driver/profile
 // @access  Private

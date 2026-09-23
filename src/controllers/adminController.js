@@ -7,6 +7,15 @@ const generateToken = require('../utils/generateToken');
 const REQUIRED_DOC_TYPES = ['Driving License', 'Aadhar Card', 'PAN Card'];
 const STATUS_VALUES = ['pending', 'approved', 'rejected'];
 
+// profilePicture can be an unbounded raw base64 string — the same field that
+// OOM-crashed this backend when embedded in every row of a bulk list. Never
+// select it raw for list endpoints; point at the photo-proxy endpoint
+// instead (serves the same bytes on demand rather than inline in every row).
+function driverPhotoUrl(req, driverId, hasPhoto) {
+  if (!hasPhoto) return null;
+  return `${req.protocol}://${req.get('host')}/api/v1/driver/${driverId}/photo`;
+}
+
 // ── Notification helper (non-blocking) ────────────────────────────────────
 async function notifyDriver(driverId, title, message, type) {
   try {
@@ -147,10 +156,17 @@ exports.listDrivers = async (req, res) => {
     const total = matching.length;
     const pageIds = matching.slice(skip, skip + Number(limit)).map((m) => m._id);
 
-    const rows = await Driver.find({ _id: { $in: pageIds } }).select('-password').lean();
+    const [rows, withPhoto] = await Promise.all([
+      Driver.find({ _id: { $in: pageIds } }).select('-password -profilePicture').lean(),
+      Driver.find({ _id: { $in: pageIds }, profilePicture: { $exists: true, $ne: null } }).select('_id').lean(),
+    ]);
     const rowById = new Map(rows.map((r) => [String(r._id), r]));
     const drivers = pageIds.map((id) => rowById.get(String(id))).filter(Boolean);
-    drivers.forEach((d) => { d.docCount = countByDriver[String(d._id)] || 0; });
+    const hasPhotoSet = new Set(withPhoto.map((w) => String(w._id)));
+    drivers.forEach((d) => {
+      d.docCount = countByDriver[String(d._id)] || 0;
+      d.photoUrl = driverPhotoUrl(req, d._id, hasPhotoSet.has(String(d._id)));
+    });
 
     res.json({
       success: true,

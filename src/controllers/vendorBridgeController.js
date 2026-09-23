@@ -51,6 +51,16 @@ function buildDocumentStatus(kycByType) {
   };
 }
 
+// profilePicture can be an unbounded raw base64 string (uploadProfilePicture
+// has no size limit) — this was the real cause of the OOM crash on this
+// endpoint: every driver's full photo was embedded in every list response.
+// Point at the proxy endpoint instead (excluded from selects below); it
+// serves the same bytes on demand rather than inline in every list.
+function driverPhotoUrl(req, driverId, hasPhoto) {
+  if (!hasPhoto) return null;
+  return `${req.protocol}://${req.get('host')}/api/v1/driver/${driverId}/photo`;
+}
+
 // ──────────────────────────────────────────────────────────────────
 // GET /api/v1/vendor/drivers
 // Returns all registered driver app users (name, phone, rating, etc.)
@@ -130,7 +140,7 @@ exports.getAvailableDrivers = async (req, res, next) => {
         licenseTypes: d.license?.types || [],
         aadhaarNumber: d.documents?.aadharNumber || '',
         panNumber: d.documents?.panCardNumber || '',
-        photoUrl: d.profilePicture || null,
+        photoUrl: driverPhotoUrl(req, d._id, !!d.profilePicture),
         rating: d.rating || 0,
         isVerified: d.isVerified || false,
         documentStatus: buildDocumentStatus(kycByDriver[d._id.toString()]),
@@ -562,7 +572,7 @@ exports.getPartneredDrivers = async (req, res, next) => {
           age: d.dob
             ? Math.floor((Date.now() - new Date(d.dob)) / (365.25 * 24 * 60 * 60 * 1000))
             : 0,
-          photoUrl: d.profilePicture || null,
+          photoUrl: driverPhotoUrl(req, d._id, !!d.profilePicture),
           rating: d.rating || 0,
           isVerified: d.isVerified || false,
           documentStatus: buildDocumentStatus(kycByDriver[d._id.toString()]),
@@ -587,7 +597,7 @@ exports.getPartneredDrivers = async (req, res, next) => {
           age: d.dob
             ? Math.floor((Date.now() - new Date(d.dob)) / (365.25 * 24 * 60 * 60 * 1000))
             : 0,
-          photoUrl: d.profilePicture || null,
+          photoUrl: driverPhotoUrl(req, d._id, !!d.profilePicture),
           rating: d.rating || 0,
           isVerified: d.isVerified || false,
           documentStatus: buildDocumentStatus(kycByDriver[d._id.toString()]),
