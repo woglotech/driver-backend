@@ -88,8 +88,15 @@ exports.getAvailableDrivers = async (req, res, next) => {
     // blowing past the vendor backend's 10s timeout to this endpoint. A
     // search term already narrows results in practice; cap the unfiltered
     // browse case so this stays fast regardless of fleet size.
+    // profilePicture is a raw, unbounded base64 field — excluding it from
+    // the JSON response (via driverPhotoUrl below) didn't help the latency
+    // here, because the -password select still pulled it out of Mongo for
+    // every matched driver before it got stripped. With up to 300 drivers
+    // per unfiltered browse, that's potentially hundreds of MB moved from
+    // MongoDB to this process on every call. Exclude it at the query level
+    // too, and use a separate cheap existence check for the hasPhoto flag.
     const drivers = await Driver.find(query)
-      .select('-password')
+      .select('-password -profilePicture')
       .limit(search && search.trim() ? 0 : 300)
       .lean();
     const driverIds = drivers.map(d => d._id);
@@ -108,7 +115,11 @@ exports.getAvailableDrivers = async (req, res, next) => {
       }).lean();
     }
 
-    const kycByDriver = await getKycStatusByDriver(driverIds);
+    const [kycByDriver, driversWithPhoto] = await Promise.all([
+      getKycStatusByDriver(driverIds),
+      Driver.find({ _id: { $in: driverIds }, profilePicture: { $exists: true, $nin: [null, ''] } }).select('_id').lean(),
+    ]);
+    const hasPhotoSet = new Set(driversWithPhoto.map(d => String(d._id)));
 
     const mapped = drivers.map(d => {
       let invitationStatus = null;
@@ -140,7 +151,7 @@ exports.getAvailableDrivers = async (req, res, next) => {
         licenseTypes: d.license?.types || [],
         aadhaarNumber: d.documents?.aadharNumber || '',
         panNumber: d.documents?.panCardNumber || '',
-        photoUrl: driverPhotoUrl(req, d._id, !!d.profilePicture),
+        photoUrl: driverPhotoUrl(req, d._id, hasPhotoSet.has(d._id.toString())),
         rating: d.rating || 0,
         isVerified: d.isVerified || false,
         documentStatus: buildDocumentStatus(kycByDriver[d._id.toString()]),
