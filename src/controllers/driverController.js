@@ -29,6 +29,12 @@ exports.getDriverPhoto = async (req, res) => {
 
     if (!raw.startsWith('data:')) {
       // Already a hosted URL/relative path (e.g. /uploads/profiles/x.jpg).
+      // The redirect response itself still carries helmet's default
+      // same-origin CORP header unless overridden here — without this, the
+      // browser blocks the <img> load with ERR_BLOCKED_BY_RESPONSE.NotSameOrigin
+      // before it ever follows the redirect, same reasoning as the base64
+      // path below.
+      res.set('Cross-Origin-Resource-Policy', 'cross-origin');
       const url = raw.startsWith('http') ? raw : `${req.protocol}://${req.get('host')}${raw}`;
       return res.redirect(url);
     }
