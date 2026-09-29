@@ -50,6 +50,12 @@ const driverSchema = new mongoose.Schema({
   currentSessionId: { type: String },
 }, { timestamps: true });
 
+// Admin panel's listDrivers filters by kycStatus (or nothing, for "All") and
+// sorts by updatedAt as a tiebreaker — without these, every list/count call
+// is a full collection scan.
+driverSchema.index({ kycStatus: 1, updatedAt: -1 });
+driverSchema.index({ updatedAt: -1 });
+
 // Helper to normalize phone numbers to 91xxxxxxxxxx format
 driverSchema.statics.normalizePhone = function(phone) {
   if (!phone) return null;
