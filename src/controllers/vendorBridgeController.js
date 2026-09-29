@@ -95,8 +95,15 @@ exports.getAvailableDrivers = async (req, res, next) => {
     // per unfiltered browse, that's potentially hundreds of MB moved from
     // MongoDB to this process on every call. Exclude it at the query level
     // too, and use a separate cheap existence check for the hasPhoto flag.
+    // Sorted by _id (needs no extra index — ObjectId already embeds
+    // insertion order) so the unfiltered browse case's 300-cap is at least
+    // a stable, deterministic window instead of whatever arbitrary order
+    // MongoDB's natural scan happens to return — without this, a driver
+    // could unpredictably fall in or out of the cap between requests with
+    // no way to reliably find them via browsing.
     const drivers = await Driver.find(query)
       .select('-password -profilePicture')
+      .sort({ _id: -1 })
       .limit(search && search.trim() ? 0 : 300)
       .lean();
     const driverIds = drivers.map(d => d._id);
