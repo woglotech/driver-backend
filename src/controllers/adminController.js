@@ -29,7 +29,13 @@ async function notifyDriver(driverId, title, message, type) {
 // Overall status is 'approved' only once all mandatory doc types are each
 // 'approved'; 'rejected' if any uploaded doc is 'rejected'; else 'pending'.
 async function recomputeDriverKycStatus(driverId) {
-  const docs = await Kyc.find({ driver: driverId }).sort({ uploadedAt: 1 });
+  // Independent reads — Driver isn't needed until after docs are computed,
+  // so there's no reason to wait for one before starting the other.
+  const [docs, driver] = await Promise.all([
+    Kyc.find({ driver: driverId }).sort({ uploadedAt: 1 }),
+    Driver.findById(driverId),
+  ]);
+  if (!driver) return null;
 
   const latestByType = {};
   docs.forEach((d) => { latestByType[d.type] = d; }); // later entries overwrite earlier ones
@@ -50,9 +56,6 @@ async function recomputeDriverKycStatus(driverId) {
       .map((d) => (d.rejectionReason ? `${d.type}: ${d.rejectionReason}` : d.type))
       .join('; ');
   }
-
-  const driver = await Driver.findById(driverId);
-  if (!driver) return null;
 
   const previousStatus = driver.kycStatus;
   driver.kycStatus = newStatus;
@@ -141,9 +144,15 @@ exports.listDrivers = async (req, res) => {
     // {_id, updatedAt} for every matching driver (tiny rows), sort those by
     // (docCount desc, updatedAt desc), slice out this page, and only then
     // load the page's full driver documents.
-    const [matching, docCounts] = await Promise.all([
-      Driver.find(filter).select('_id updatedAt').lean(),
-      Kyc.aggregate([{ $group: { _id: '$driver', count: { $sum: 1 } } }]),
+    const matching = await Driver.find(filter).select('_id updatedAt').lean();
+    // Scoped to just the matched drivers — this used to aggregate the ENTIRE
+    // Kyc collection on every call regardless of the current filter (e.g.
+    // viewing "rejected" with 5 drivers still scanned every KYC doc system-
+    // wide), which fires on every admin login since Drivers is the default
+    // landing tab.
+    const docCounts = await Kyc.aggregate([
+      { $match: { driver: { $in: matching.map((m) => m._id) } } },
+      { $group: { _id: '$driver', count: { $sum: 1 } } },
     ]);
     const countByDriver = {};
     docCounts.forEach((c) => { countByDriver[String(c._id)] = c.count; });
@@ -410,7 +419,12 @@ exports.updateKycDocStatus = async (req, res) => {
 
     const driver = await recomputeDriverKycStatus(driverId);
 
-    res.json({ success: true, data: kyc, driverKycStatus: driver ? driver.kycStatus : undefined });
+    res.json({
+      success: true,
+      data: kyc,
+      driverKycStatus: driver ? driver.kycStatus : undefined,
+      driverKycRejectionReason: driver ? driver.kycRejectionReason : undefined,
+    });
   } catch (err) {
     console.error('updateKycDocStatus error:', err);
     res.status(500).json({ error: 'Server error' });
