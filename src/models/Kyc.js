@@ -4,7 +4,9 @@ const kycSchema = new mongoose.Schema({
   driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', required: true },
   type: { 
     type: String, 
-    enum: ['Driving License', 'Aadhar Card', 'PAN Card', 'Passport'], 
+    // 'PAN Card' is kept for backward compatibility with documents uploaded
+    // before the KYC flow switched to the generic 'Identity Proof' type.
+    enum: ['Driving License', 'Aadhar Card', 'PAN Card', 'Identity Proof', 'Passport'],
     required: true 
   },
   fileUrlFront: { type: String, required: true },

@@ -5,7 +5,15 @@ const Notification = require('../models/Notification');
 const generateToken = require('../utils/generateToken');
 const { deleteDriverAccountCascade } = require('./driverController');
 
-const REQUIRED_DOC_TYPES = ['Driving License', 'Aadhar Card', 'PAN Card'];
+// Each inner array is one requirement slot; any type within it satisfies that
+// slot. 'PAN Card' is kept alongside 'Identity Proof' so drivers who were
+// already approved under the old PAN-specific requirement aren't silently
+// demoted back to pending the next time their KYC is recomputed.
+const REQUIRED_DOC_GROUPS = [
+  ['Driving License'],
+  ['Aadhar Card'],
+  ['PAN Card', 'Identity Proof'],
+];
 const STATUS_VALUES = ['pending', 'approved', 'rejected'];
 
 // profilePicture can be an unbounded raw base64 string — the same field that
@@ -42,8 +50,8 @@ async function recomputeDriverKycStatus(driverId) {
   docs.forEach((d) => { latestByType[d.type] = d; }); // later entries overwrite earlier ones
 
   const hasRejected = docs.some((d) => d.status === 'rejected');
-  const allRequiredApproved = REQUIRED_DOC_TYPES.every(
-    (t) => latestByType[t] && latestByType[t].status === 'approved'
+  const allRequiredApproved = REQUIRED_DOC_GROUPS.every(
+    (group) => group.some((t) => latestByType[t] && latestByType[t].status === 'approved')
   );
 
   let newStatus = 'pending';

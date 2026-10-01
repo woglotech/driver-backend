@@ -47,7 +47,10 @@ function buildDocumentStatus(kycByType) {
   return {
     license: get('Driving License'),
     aadhaar: get('Aadhar Card'),
-    pan: get('PAN Card'),
+    // Covers drivers approved under the old PAN-specific requirement as well
+    // as new ones uploading the generic 'Identity Proof' type — whichever is
+    // actually approved wins; see REQUIRED_DOC_GROUPS in adminController.js.
+    identityProof: get('PAN Card') !== 'not_uploaded' ? get('PAN Card') : get('Identity Proof'),
   };
 }
 
@@ -157,7 +160,6 @@ exports.getAvailableDrivers = async (req, res, next) => {
         licenseNumber: d.license?.number || '',
         licenseTypes: d.license?.types || [],
         aadhaarNumber: d.documents?.aadharNumber || '',
-        panNumber: d.documents?.panCardNumber || '',
         photoUrl: driverPhotoUrl(req, d._id, hasPhotoSet.has(d._id.toString())),
         rating: d.rating || 0,
         isVerified: d.isVerified || false,

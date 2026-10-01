@@ -731,7 +731,7 @@ exports.uploadDriverKyc = async (req, res, next) => {
     }
 
     // Map to valid KYC types defined in model
-    const validTypes = ['Driving License', 'Aadhar Card', 'PAN Card', 'Passport'];
+    const validTypes = ['Driving License', 'Aadhar Card', 'PAN Card', 'Identity Proof', 'Passport'];
     if (!validTypes.includes(type)) {
       res.status(400);
       throw new Error(`Invalid KYC type. Must be one of: ${validTypes.join(', ')}`);
