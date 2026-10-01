@@ -611,22 +611,36 @@ exports.completeDriverRegistration = async (req, res, next) => {
 // verifyOtp above) creates a minimal account with just a phone number and a
 // placeholder name, with no email/password at all, so the driver could
 // never log in via the email option. This sets real name/email/password on
-// that same account so both login paths work afterward.
+// that same account so both login paths work afterward. Apple-authenticated
+// drivers (driver.appleId set) hit this same endpoint just to fill in
+// name/email — Sign In with Apple already provides secure authentication,
+// so per Apple's App Review Guideline 4.0 they must never be forced to also
+// create a password; password stays optional for them.
 // @route   PUT /api/v1/auth/complete-profile
 // @access  Private
 exports.completeProfile = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
+    const driver = await Driver.findById(req.driver._id);
+    if (!driver) {
+      res.status(404);
+      throw new Error('Driver not found');
+    }
+
+    const passwordRequired = !driver.appleId;
+
+    if (!name || !email || (passwordRequired && !password)) {
       res.status(400);
-      throw new Error('Please provide name, email, and password');
+      throw new Error(
+        passwordRequired ? 'Please provide name, email, and password' : 'Please provide name and email'
+      );
     }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       res.status(400);
       throw new Error('Please provide a valid email address');
     }
-    if (password.length < 8) {
+    if (password && password.length < 8) {
       res.status(400);
       throw new Error('Password must be at least 8 characters');
     }
@@ -637,15 +651,9 @@ exports.completeProfile = async (req, res, next) => {
       throw new Error('An account with this email already exists');
     }
 
-    const driver = await Driver.findById(req.driver._id);
-    if (!driver) {
-      res.status(404);
-      throw new Error('Driver not found');
-    }
-
     driver.name = name;
     driver.email = email;
-    driver.password = password; // pre-save hook hashes it
+    if (password) driver.password = password; // pre-save hook hashes it
     await driver.save();
 
     res.status(200).json({
