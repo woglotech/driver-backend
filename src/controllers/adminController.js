@@ -6,13 +6,12 @@ const generateToken = require('../utils/generateToken');
 const { deleteDriverAccountCascade } = require('./driverController');
 
 // Each inner array is one requirement slot; any type within it satisfies that
-// slot. 'PAN Card' is kept alongside 'Identity Proof' so drivers who were
-// already approved under the old PAN-specific requirement aren't silently
-// demoted back to pending the next time their KYC is recomputed.
+// slot. The app no longer collects a third identity document (PAN Card /
+// Identity Proof) at all — dropping this slot only ever makes recomputed
+// KYC status easier to satisfy, so it can't demote anyone already approved.
 const REQUIRED_DOC_GROUPS = [
   ['Driving License'],
   ['Aadhar Card'],
-  ['PAN Card', 'Identity Proof'],
 ];
 const STATUS_VALUES = ['pending', 'approved', 'rejected'];
 
