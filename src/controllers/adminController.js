@@ -3,6 +3,7 @@ const Driver = require('../models/Driver');
 const Kyc = require('../models/Kyc');
 const Notification = require('../models/Notification');
 const generateToken = require('../utils/generateToken');
+const { deleteDriverAccountCascade } = require('./driverController');
 
 const REQUIRED_DOC_TYPES = ['Driving License', 'Aadhar Card', 'PAN Card'];
 const STATUS_VALUES = ['pending', 'approved', 'rejected'];
@@ -375,6 +376,25 @@ exports.approveDriver = async (req, res) => {
     res.json({ success: true, data: updated });
   } catch (err) {
     console.error('approveDriver error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// ─── Delete a driver account — full cascade, no undo ─────────────────────
+// DELETE /api/v1/admin/drivers/:driverId
+exports.deleteDriver = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const result = await deleteDriverAccountCascade(driverId);
+    if (!result.success) {
+      return res.status(result.status || 500).json({ error: result.error });
+    }
+    res.json({ success: true, message: 'Driver and all associated data deleted' });
+  } catch (err) {
+    console.error('deleteDriver error:', err);
+    if (err.name === 'CastError') {
+      return res.status(400).json({ error: 'Invalid driver id' });
+    }
     res.status(500).json({ error: 'Server error' });
   }
 };

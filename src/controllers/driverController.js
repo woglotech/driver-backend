@@ -875,54 +875,62 @@ exports.uploadProfilePicture = async (req, res, next) => {
   }
 };
 
+// Shared by the driver's own self-delete (below) and the admin-initiated
+// delete (adminController.js) — same full cascade either way, just a
+// different caller decides *which* driverId and whether the requester is
+// allowed to delete it.
+exports.deleteDriverAccountCascade = async function (driverId) {
+  // 1. Delete all vendor partnerships (requests + vehicles + calendar events)
+  const vehicles = await Vehicle.find({ driver: driverId });
+  for (const v of vehicles) {
+    if (v.licensePlate) {
+      await Event.deleteMany({
+        driver: driverId,
+        type: 'booked',
+        description: new RegExp(v.licensePlate, 'i'),
+      });
+    }
+  }
+  await Vehicle.deleteMany({ driver: driverId });
+  await VendorRequest.deleteMany({ driver: driverId });
+
+  // 2. Delete KYC documents — frees up document re-upload for re-registration
+  const kycResult = await Kyc.deleteMany({ driver: driverId });
+  console.log(`[deleteDriverAccountCascade] Deleted ${kycResult.deletedCount} KYC document(s) for driver ${driverId}`);
+
+  // 3. Delete OTP records — frees phone/email for re-registration
+  const driver = await Driver.findById(driverId).select('phone email');
+  if (driver) {
+    if (driver.phone) await Otp.deleteMany({ phone: driver.phone });
+    if (driver.email) await Otp.deleteMany({ email: driver.email });
+  }
+
+  // 4. Delete other driver data
+  await Ride.deleteMany({ driver: driverId });
+  await Trip.deleteMany({ driver: driverId }).catch(() => {}); // graceful if Trip model differs
+  await Event.deleteMany({ driver: driverId });
+  await Notification.deleteMany({ driver: driverId });
+  await Message.deleteMany({ $or: [{ sender: driverId }, { receiver: driverId }] });
+  await Support.deleteMany({ driver: driverId }).catch(() => {});
+
+  // 5. Finally delete the driver record itself
+  const deletedDriver = await Driver.findByIdAndDelete(driverId);
+  if (!deletedDriver) {
+    return { success: false, status: 404, error: 'Driver not found' };
+  }
+  return { success: true };
+};
+
 // @desc    Delete driver account and all associated data
 // @route   DELETE /api/v1/driver/account
 // @access  Private
 exports.deleteAccount = async (req, res, next) => {
   try {
-    const driverId = req.driver._id;
-
-    // 1. Delete all vendor partnerships (requests + vehicles + calendar events)
-    const vehicles = await Vehicle.find({ driver: driverId });
-    for (const v of vehicles) {
-      if (v.licensePlate) {
-        await Event.deleteMany({
-          driver: driverId,
-          type: 'booked',
-          description: new RegExp(v.licensePlate, 'i'),
-        });
-      }
+    const result = await exports.deleteDriverAccountCascade(req.driver._id);
+    if (!result.success) {
+      res.status(result.status || 500);
+      throw new Error(result.error || 'Server error');
     }
-    await Vehicle.deleteMany({ driver: driverId });
-    await VendorRequest.deleteMany({ driver: driverId });
-
-    // 2. Delete KYC documents — frees up document re-upload for re-registration
-    const kycResult = await Kyc.deleteMany({ driver: driverId });
-    console.log(`[deleteAccount] Deleted ${kycResult.deletedCount} KYC document(s) for driver ${driverId}`);
-
-    // 3. Delete OTP records — frees phone/email for re-registration
-    const driver = await Driver.findById(driverId).select('phone email');
-    if (driver) {
-      if (driver.phone) await Otp.deleteMany({ phone: driver.phone });
-      if (driver.email) await Otp.deleteMany({ email: driver.email });
-    }
-
-    // 4. Delete other driver data
-    await Ride.deleteMany({ driver: driverId });
-    await Trip.deleteMany({ driver: driverId }).catch(() => {}); // graceful if Trip model differs
-    await Event.deleteMany({ driver: driverId });
-    await Notification.deleteMany({ driver: driverId });
-    await Message.deleteMany({ $or: [{ sender: driverId }, { receiver: driverId }] });
-    await Support.deleteMany({ driver: driverId }).catch(() => {});
-
-    // 5. Finally delete the driver record itself
-    const deletedDriver = await Driver.findByIdAndDelete(driverId);
-
-    if (!deletedDriver) {
-      res.status(404);
-      throw new Error('Driver not found');
-    }
-
     res.status(200).json({
       success: true,
       message: 'Account and all associated data deleted successfully',
