@@ -568,30 +568,6 @@ exports.getSupportTypes = async (req, res, next) => {
   }
 };
 
-// @desc    Upload profile picture
-// @route   POST /api/v1/driver/profile-picture
-// @access  Private
-exports.uploadProfilePicture = async (req, res, next) => {
-  try {
-    if (!req.file) {
-      res.status(400);
-      throw new Error('Please upload an image');
-    }
-
-    const driver = await Driver.findById(req.driver._id);
-    driver.profilePicture = `/uploads/profiles/${req.file.filename}`;
-    await driver.save();
-
-    res.json({
-      success: true,
-      message: 'Profile picture updated',
-      profilePicture: driver.profilePicture
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 // @desc    Get current day's calendar status
 // @route   GET /api/v1/driver/calendar/current
 // @access  Private
