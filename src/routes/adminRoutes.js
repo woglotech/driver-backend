@@ -13,6 +13,7 @@ router.get('/drivers/:driverId', protectAdmin, adminController.getDriver);
 router.put('/drivers/:driverId', protectAdmin, adminController.updateDriver);
 router.put('/drivers/:driverId/approve', protectAdmin, adminController.approveDriver);
 router.put('/drivers/:driverId/kyc/:kycId', protectAdmin, adminController.updateKycDocStatus);
+router.delete('/drivers/:driverId/kyc/:kycId', protectAdmin, adminController.deleteKycDoc);
 router.delete('/drivers/:driverId', protectAdmin, adminController.deleteDriver);
 
 // App version / forced update config

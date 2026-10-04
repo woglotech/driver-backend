@@ -92,6 +92,7 @@ async function recomputeDriverKycStatus(driverId) {
 
   return driver;
 }
+exports.recomputeDriverKycStatus = recomputeDriverKycStatus;
 
 // ─── Admin login ──────────────────────────────────────────────────────────
 // POST /api/v1/admin/login
@@ -454,6 +455,33 @@ exports.updateKycDocStatus = async (req, res) => {
     });
   } catch (err) {
     console.error('updateKycDocStatus error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// ─── Admin deletes a single KYC document ─────────────────────────────────
+// DELETE /api/v1/admin/drivers/:driverId/kyc/:kycId
+// Removes the document entirely (not a rejection — the driver has to
+// upload it again from scratch), then recomputes the driver's overall
+// kycStatus from whatever documents remain.
+exports.deleteKycDoc = async (req, res) => {
+  try {
+    const { driverId, kycId } = req.params;
+
+    const kyc = await Kyc.findOneAndDelete({ _id: kycId, driver: driverId });
+    if (!kyc) {
+      return res.status(404).json({ error: 'KYC document not found for this driver' });
+    }
+
+    const driver = await recomputeDriverKycStatus(driverId);
+
+    res.json({
+      success: true,
+      driverKycStatus: driver ? driver.kycStatus : undefined,
+      driverKycRejectionReason: driver ? driver.kycRejectionReason : undefined,
+    });
+  } catch (err) {
+    console.error('deleteKycDoc error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };

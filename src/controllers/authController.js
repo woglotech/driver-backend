@@ -4,6 +4,7 @@ const Driver = require('../models/Driver');
 const Kyc = require('../models/Kyc');
 const Otp = require('../models/Otp');
 const generateToken = require('../utils/generateToken');
+const { recomputeDriverKycStatus } = require('./adminController');
 
 /// Stamps a fresh session id on the driver and returns a token embedding
 /// it — protect() rejects any older token once this rotates, so logging in
@@ -772,6 +773,13 @@ exports.uploadDriverKyc = async (req, res, next) => {
         status: 'pending',
       });
     }
+
+    // Without this, Driver.kycStatus (what the admin list actually
+    // filters/sorts by) never left 'rejected' after a driver fixed and
+    // re-uploaded the flagged document — only the admin approve/reject
+    // endpoint used to trigger this recompute.
+    await recomputeDriverKycStatus(req.driver._id);
+
     res.status(201).json({
       success: true,
       message: 'KYC Document uploaded successfully',
