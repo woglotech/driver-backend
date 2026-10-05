@@ -4,6 +4,7 @@ const Kyc = require('../models/Kyc');
 const Notification = require('../models/Notification');
 const generateToken = require('../utils/generateToken');
 const { deleteDriverAccountCascade } = require('./driverController');
+const { sendWhatsAppReminder } = require('../utils/otpService');
 
 // Each inner array is one requirement slot; any type within it satisfies that
 // slot. The app no longer collects a third identity document (PAN Card /
@@ -195,6 +196,116 @@ exports.listDrivers = async (req, res) => {
     });
   } catch (err) {
     console.error('listDrivers error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// ─── Solutions & Quota: drivers with no documents uploaded, or a rejected
+// KYC — mirrors woglo-backend's listVendorIssues/sendVendorReminder for the
+// admin panel's Issues section (drivers have no "missing location"
+// equivalent — that's a vendor/garage concept).
+// GET /api/v1/admin/driver-issues
+exports.listDriverIssues = async (req, res) => {
+  try {
+    const drivers = await Driver.find({ kycStatus: { $ne: 'approved' } })
+      .select('name phone email kycStatus kycRejectionReason')
+      .lean();
+    const driverIds = drivers.map((d) => d._id);
+
+    const docCounts = await Kyc.aggregate([
+      { $match: { driver: { $in: driverIds } } },
+      { $group: { _id: '$driver', count: { $sum: 1 } } },
+    ]);
+    const countByDriver = {};
+    docCounts.forEach((c) => { countByDriver[String(c._id)] = c.count; });
+
+    const results = [];
+    for (const driver of drivers) {
+      const uploadedDocCount = countByDriver[String(driver._id)] || 0;
+      const missingDocuments = uploadedDocCount === 0;
+      const kycRejected = driver.kycStatus === 'rejected';
+      if (!missingDocuments && !kycRejected) continue;
+
+      results.push({
+        driverId: String(driver._id),
+        name: driver.name || 'Unnamed Driver',
+        email: driver.email || '—',
+        phone: driver.phone || '—',
+        kycStatus: driver.kycStatus || 'pending',
+        missingDocuments,
+        kycRejected,
+        rejectionReason: kycRejected ? driver.kycRejectionReason || '' : '',
+        uploadedDocCount,
+      });
+    }
+
+    res.json({
+      success: true,
+      total: results.length,
+      counts: {
+        missingDocuments: results.filter((r) => r.missingDocuments).length,
+        kycRejected: results.filter((r) => r.kycRejected).length,
+      },
+      data: results,
+    });
+  } catch (err) {
+    console.error('listDriverIssues error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+const DRIVER_ISSUE_REMINDER_CONTENT = {
+  missingDocuments: {
+    title: '⚠️ Upload your KYC documents',
+    message: 'Your account is missing its KYC documents. Upload them in the app so we can review and verify your account.',
+  },
+};
+
+// ─── Send a real in-app reminder to a driver for one of the issues above ──
+// POST /api/v1/admin/drivers/:driverId/send-reminder  { issueType }
+// Creates a genuine Notification the driver sees on their own Notifications
+// page, plus a best-effort WhatsApp message — an explicit admin action, not
+// something sent automatically just because the driver shows up in the
+// issues list.
+exports.sendDriverReminder = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const { issueType } = req.body;
+
+    const content = DRIVER_ISSUE_REMINDER_CONTENT[issueType];
+    if (!content) {
+      return res.status(400).json({ error: 'issueType must be missingDocuments' });
+    }
+
+    const driver = await Driver.findById(driverId).select('name phone');
+    if (!driver) {
+      return res.status(404).json({ error: 'Driver not found' });
+    }
+
+    await Notification.create({
+      driver: driverId,
+      title: content.title,
+      message: content.message,
+      type: 'general',
+    });
+
+    // Best-effort — a driver with no phone on file, or the WhatsApp template
+    // not being approved yet, shouldn't fail the whole reminder when the
+    // in-app notification already went out fine.
+    let whatsapp = { attempted: false, sent: false };
+    if (driver.phone) {
+      whatsapp.attempted = true;
+      try {
+        await sendWhatsAppReminder(driver.phone, { name: driver.name || 'there', message: content.message });
+        whatsapp.sent = true;
+      } catch (waErr) {
+        console.error('sendDriverReminder WhatsApp send failed:', waErr.response?.data || waErr.message);
+      }
+    }
+
+    res.json({ success: true, message: 'Reminder sent', whatsapp });
+  } catch (err) {
+    console.error('sendDriverReminder error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };

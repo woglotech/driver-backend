@@ -65,6 +65,61 @@ async function sendOtpViaMsg91(phone, otp) {
   }
 }
 
+// Generic admin-reminder WhatsApp message — reused for every "nudge" the
+// admin panel sends (missing documents, KYC rejected, and whatever gets
+// added later), instead of needing a separate approved WhatsApp template
+// per reminder type. Needs its own pre-approved "utility" template with
+// two body variables ({{1}} name, {{2}} message text) — set
+// MSG91_WHATSAPP_REMINDER_TEMPLATE_NAME once that template is approved in
+// the MSG91 dashboard. Until then this is a silent no-op, so the in-app
+// notification still goes out even without it.
+async function sendWhatsAppReminder(phone, { name, message }) {
+  const templateName = process.env.MSG91_WHATSAPP_REMINDER_TEMPLATE_NAME;
+  if (!templateName) {
+    console.warn("MSG91_WHATSAPP_REMINDER_TEMPLATE_NAME not set — skipping WhatsApp reminder (in-app notification still sent)");
+    return null;
+  }
+
+  let cleanPhone = String(phone).replace(/\D/g, "");
+  if (cleanPhone.length === 10) {
+    cleanPhone = "91" + cleanPhone;
+  }
+
+  const url = "https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
+  const payload = {
+    integrated_number: process.env.MSG91_WHATSAPP_NUMBER,
+    content_type: "template",
+    payload: {
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: process.env.MSG91_WHATSAPP_REMINDER_TEMPLATE_LANG || "en",
+          policy: "deterministic",
+        },
+        to_and_components: [
+          {
+            to: [cleanPhone],
+            components: {
+              body_1: { type: "text", value: name || "there" },
+              body_2: { type: "text", value: message },
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  const response = await axios.post(url, payload, {
+    headers: {
+      authkey: process.env.MSG91_EMAIL_AUTHKEY,
+      "Content-Type": "application/json",
+    },
+    timeout: 15000,
+  });
+  return response.data;
+}
+
 async function sendResetEmailViaMsg91(email, token) {
   const resetLink = `${process.env.FRONTEND_RESET_URL}?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
 
@@ -213,4 +268,5 @@ module.exports = {
   sendSignupEmailViaMsg91,
   sendForgotPasswordEmailViaMsg91,
   sendOtpViaMsg91,
+  sendWhatsAppReminder,
 };

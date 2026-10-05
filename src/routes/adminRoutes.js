@@ -9,6 +9,8 @@ router.post('/login', adminController.login);
 
 // Drivers / KYC
 router.get('/drivers', protectAdmin, adminController.listDrivers);
+router.get('/driver-issues', protectAdmin, adminController.listDriverIssues);
+router.post('/drivers/:driverId/send-reminder', protectAdmin, adminController.sendDriverReminder);
 router.get('/drivers/:driverId', protectAdmin, adminController.getDriver);
 router.put('/drivers/:driverId', protectAdmin, adminController.updateDriver);
 router.put('/drivers/:driverId/approve', protectAdmin, adminController.approveDriver);
