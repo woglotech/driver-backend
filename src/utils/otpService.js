@@ -106,14 +106,15 @@ async function sendWhatsAppTemplate(phone, templateName, { name }) {
           {
             to: [cleanPhone],
             // MSG91's template editor forces NAMED variables (e.g.
-            // {{recipient_name}}) rather than positional {{1}} — unlike the
-            // raw Meta Cloud API, MSG91's bulk-send endpoint keys each
-            // component by that variable's actual name, not a generic
-            // "body_1" slot. Sending the wrong key silently fails with
-            // "Parameter name is missing or empty" even though the
-            // template preview still renders correctly in the dashboard.
+            // {{recipient_name}}) rather than positional {{1}}. Confirmed
+            // by capturing MSG91's own "Send WhatsApp" dashboard page's
+            // actual network request: the component key is "body_" + the
+            // variable's name (body_recipient_name) — same body_N pattern
+            // as positional templates (body_1, body_2), just with the name
+            // instead of an index. Neither "body_1" nor the bare variable
+            // name alone ("recipient_name") work; both fail silently.
             components: {
-              recipient_name: { type: "text", value: name || "there" },
+              body_recipient_name: { type: "text", value: name || "there" },
             },
           },
         ],
