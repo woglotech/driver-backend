@@ -256,8 +256,8 @@ exports.listDriverIssues = async (req, res) => {
 
 const DRIVER_ISSUE_REMINDER_CONTENT = {
   missingDocuments: {
-    title: '⚠️ Upload your KYC documents',
-    message: 'Your account is missing its KYC documents. Upload them in the app so we can review and verify your account.',
+    title: '⚠️ Upload your Agency Verification documents',
+    message: 'Your account is missing its Agency Verification documents. Upload them in the app so we can review and verify your account.',
   },
 };
 
@@ -270,11 +270,16 @@ const DRIVER_ISSUE_REMINDER_CONTENT = {
 exports.sendDriverReminder = async (req, res) => {
   try {
     const { driverId } = req.params;
-    const { issueType } = req.body;
+    const { issueType, message: customMessage, title: customTitle } = req.body;
 
-    const content = DRIVER_ISSUE_REMINDER_CONTENT[issueType];
-    if (!content) {
-      return res.status(400).json({ error: 'issueType must be missingDocuments' });
+    let content;
+    if (customMessage && String(customMessage).trim()) {
+      content = { title: (customTitle && String(customTitle).trim()) || '📢 Message from Woglo Admin', message: String(customMessage).trim() };
+    } else {
+      content = DRIVER_ISSUE_REMINDER_CONTENT[issueType];
+      if (!content) {
+        return res.status(400).json({ error: 'issueType must be missingDocuments, or provide a custom message' });
+      }
     }
 
     const driver = await Driver.findById(driverId).select('name phone');
