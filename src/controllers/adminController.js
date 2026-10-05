@@ -311,7 +311,11 @@ exports.sendDriverReminder = async (req, res) => {
     // not being approved yet, shouldn't fail the whole reminder when the
     // in-app notification already went out fine.
     let whatsapp = { attempted: false, sent: false };
-    if (driver.phone && templateName) {
+    if (!driver.phone) {
+      console.warn(`sendDriverReminder: driver ${driverId} has no phone on file — WhatsApp not attempted`);
+    } else if (!templateName) {
+      console.warn(`sendDriverReminder: no WhatsApp template env var set for issueType "${issueType || '(custom message)'}" — WhatsApp not attempted`);
+    } else {
       whatsapp.attempted = true;
       try {
         await sendWhatsAppTemplate(driver.phone, templateName, { name: driver.name || 'there' });
