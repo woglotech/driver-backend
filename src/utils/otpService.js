@@ -14,6 +14,11 @@ async function sendOtpViaMsg91(phone, otp) {
   // msg91 single-message WhatsApp endpoint (supports standard components array format)
   const url = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/";
 
+  // The otp_vendor template was recreated under the new WhatsApp number
+  // (919446688082) using Meta's current, much stricter Authentication
+  // category format — fixed "XXXXXX is your verification code" body with
+  // just ONE variable (the code itself), not the old 5-variable custom
+  // wording Meta no longer allows for Authentication templates.
   const payload = {
     integrated_number: process.env.MSG91_WHATSAPP_NUMBER,
     content_type: "template",
@@ -30,11 +35,7 @@ async function sendOtpViaMsg91(phone, otp) {
           {
             type: "body",
             parameters: [
-              { type: "text", text: process.env.MSG91_PARAM_1 || "accessing" },
-              { type: "text", text: process.env.MSG91_PARAM_2 || "Woglo" },
-              { type: "text", text: process.env.MSG91_PARAM_3 || "your device" },
-              { type: "text", text: otp },
-              { type: "text", text: process.env.MSG91_PARAM_5 || "Woglo Support" }
+              { type: "text", text: otp }
             ]
           },
           {
