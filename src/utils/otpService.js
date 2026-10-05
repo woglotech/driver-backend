@@ -65,9 +65,10 @@ async function sendOtpViaMsg91(phone, otp) {
   }
 }
 
-// Sends a pre-approved WhatsApp "utility" template with a single {{1}} name
-// variable — one template per canned reminder reason (currently just
-// missing documents), each with fixed wording that matches exactly what the
+// Sends a pre-approved WhatsApp "utility" template with a single named
+// {{recipient_name}} variable — one template per canned reminder reason
+// (currently just missing documents), each with fixed wording that matches
+// exactly what the
 // admin panel's DRIVER_ISSUE_REMINDER_CONTENT says. Deliberately NOT a
 // single generic "any message" template: WhatsApp's review flagged an
 // earlier version of this with a free-text second variable as Marketing
@@ -104,8 +105,15 @@ async function sendWhatsAppTemplate(phone, templateName, { name }) {
         to_and_components: [
           {
             to: [cleanPhone],
+            // MSG91's template editor forces NAMED variables (e.g.
+            // {{recipient_name}}) rather than positional {{1}} — unlike the
+            // raw Meta Cloud API, MSG91's bulk-send endpoint keys each
+            // component by that variable's actual name, not a generic
+            // "body_1" slot. Sending the wrong key silently fails with
+            // "Parameter name is missing or empty" even though the
+            // template preview still renders correctly in the dashboard.
             components: {
-              body_1: { type: "text", value: name || "there" },
+              recipient_name: { type: "text", value: name || "there" },
             },
           },
         ],
