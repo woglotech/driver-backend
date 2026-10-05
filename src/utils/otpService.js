@@ -65,18 +65,22 @@ async function sendOtpViaMsg91(phone, otp) {
   }
 }
 
-// Generic admin-reminder WhatsApp message — reused for every "nudge" the
-// admin panel sends (missing documents, KYC rejected, and whatever gets
-// added later), instead of needing a separate approved WhatsApp template
-// per reminder type. Needs its own pre-approved "utility" template with
-// two body variables ({{1}} name, {{2}} message text) — set
-// MSG91_WHATSAPP_REMINDER_TEMPLATE_NAME once that template is approved in
-// the MSG91 dashboard. Until then this is a silent no-op, so the in-app
-// notification still goes out even without it.
-async function sendWhatsAppReminder(phone, { name, message }) {
-  const templateName = process.env.MSG91_WHATSAPP_REMINDER_TEMPLATE_NAME;
+// Sends a pre-approved WhatsApp "utility" template with a single {{1}} name
+// variable — one template per canned reminder reason (currently just
+// missing documents), each with fixed wording that matches exactly what the
+// admin panel's DRIVER_ISSUE_REMINDER_CONTENT says. Deliberately NOT a
+// single generic "any message" template: WhatsApp's review flagged an
+// earlier version of this with a free-text second variable as Marketing
+// (requires recipient opt-in nobody has given), because a template whose
+// body can say anything doesn't read as a genuine fixed-purpose utility
+// message. An admin's own freely-typed message therefore can't go out as a
+// WhatsApp template at all — only the canned reminders can, via their own
+// approved templateName. Until a given reminder's template env var is set
+// and approved, this is a silent no-op, so the in-app notification still
+// goes out either way.
+async function sendWhatsAppTemplate(phone, templateName, { name }) {
   if (!templateName) {
-    console.warn("MSG91_WHATSAPP_REMINDER_TEMPLATE_NAME not set — skipping WhatsApp reminder (in-app notification still sent)");
+    console.warn("No WhatsApp template configured for this reminder — skipping (in-app notification still sent)");
     return null;
   }
 
@@ -102,7 +106,6 @@ async function sendWhatsAppReminder(phone, { name, message }) {
             to: [cleanPhone],
             components: {
               body_1: { type: "text", value: name || "there" },
-              body_2: { type: "text", value: message },
             },
           },
         ],
@@ -268,5 +271,5 @@ module.exports = {
   sendSignupEmailViaMsg91,
   sendForgotPasswordEmailViaMsg91,
   sendOtpViaMsg91,
-  sendWhatsAppReminder,
+  sendWhatsAppTemplate,
 };

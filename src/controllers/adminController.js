@@ -4,7 +4,7 @@ const Kyc = require('../models/Kyc');
 const Notification = require('../models/Notification');
 const generateToken = require('../utils/generateToken');
 const { deleteDriverAccountCascade } = require('./driverController');
-const { sendWhatsAppReminder } = require('../utils/otpService');
+const { sendWhatsAppTemplate } = require('../utils/otpService');
 
 // Each inner array is one requirement slot; any type within it satisfies that
 // slot. The app no longer collects a third identity document (PAN Card /
@@ -261,6 +261,13 @@ const DRIVER_ISSUE_REMINDER_CONTENT = {
   },
 };
 
+// Same approved template/env var as woglo-backend's missingDocuments
+// reminder — the wording is identical for vendors and drivers, so both
+// backends share one template instead of needing a duplicate approved.
+const DRIVER_ISSUE_REMINDER_TEMPLATES = {
+  missingDocuments: () => process.env.MSG91_WHATSAPP_MISSING_DOCS_TEMPLATE_NAME,
+};
+
 // ─── Send a real in-app reminder to a driver for one of the issues above ──
 // POST /api/v1/admin/drivers/:driverId/send-reminder  { issueType }
 // Creates a genuine Notification the driver sees on their own Notifications
@@ -273,13 +280,19 @@ exports.sendDriverReminder = async (req, res) => {
     const { issueType, message: customMessage, title: customTitle } = req.body;
 
     let content;
+    let templateName = null;
     if (customMessage && String(customMessage).trim()) {
       content = { title: (customTitle && String(customTitle).trim()) || '📢 Message from Woglo Admin', message: String(customMessage).trim() };
+      // No WhatsApp template for this path — an admin's freely-typed text
+      // can't go out as a WhatsApp business-initiated message at all (not a
+      // category setting, a hard platform rule: that only works within 24h
+      // of the recipient messaging first). In-app notification only.
     } else {
       content = DRIVER_ISSUE_REMINDER_CONTENT[issueType];
       if (!content) {
         return res.status(400).json({ error: 'issueType must be missingDocuments, or provide a custom message' });
       }
+      templateName = DRIVER_ISSUE_REMINDER_TEMPLATES[issueType]?.();
     }
 
     const driver = await Driver.findById(driverId).select('name phone');
@@ -298,10 +311,10 @@ exports.sendDriverReminder = async (req, res) => {
     // not being approved yet, shouldn't fail the whole reminder when the
     // in-app notification already went out fine.
     let whatsapp = { attempted: false, sent: false };
-    if (driver.phone) {
+    if (driver.phone && templateName) {
       whatsapp.attempted = true;
       try {
-        await sendWhatsAppReminder(driver.phone, { name: driver.name || 'there', message: content.message });
+        await sendWhatsAppTemplate(driver.phone, templateName, { name: driver.name || 'there' });
         whatsapp.sent = true;
       } catch (waErr) {
         console.error('sendDriverReminder WhatsApp send failed:', waErr.response?.data || waErr.message);
