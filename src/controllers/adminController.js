@@ -4,7 +4,7 @@ const Kyc = require('../models/Kyc');
 const Notification = require('../models/Notification');
 const generateToken = require('../utils/generateToken');
 const { deleteDriverAccountCascade } = require('./driverController');
-const { sendWhatsAppTemplate } = require('../utils/otpService');
+const { sendWhatsAppTemplate, sendVerificationStatusWhatsApp } = require('../utils/otpService');
 
 // Each inner array is one requirement slot; any type within it satisfies that
 // slot. The app no longer collects a third identity document (PAN Card /
@@ -31,6 +31,20 @@ async function notifyDriver(driverId, title, message, type) {
     await Notification.create({ driver: driverId, title, message, type });
   } catch (err) {
     console.error('Failed to create notification:', err.message);
+  }
+}
+
+// WhatsApp mirrors the in-app notification on an overall verified/rejected
+// transition — never fails the caller, same non-blocking pattern as
+// notifyDriver above and sendDriverReminder's WhatsApp path.
+async function notifyDriverStatusWhatsApp(phone, name, status, reason) {
+  if (!phone) return { attempted: false, sent: false };
+  try {
+    const result = await sendVerificationStatusWhatsApp(phone, name, status, reason);
+    return { attempted: true, sent: !!result };
+  } catch (err) {
+    console.error('Driver verification WhatsApp send failed:', err.response?.data || err.message);
+    return { attempted: true, sent: false };
   }
 }
 
@@ -79,6 +93,7 @@ async function recomputeDriverKycStatus(driverId) {
         'Your KYC documents have been reviewed and approved. You are now a fully verified Woglo driver!',
         'kycApproved'
       );
+      await notifyDriverStatusWhatsApp(driver.phone, driver.name, 'verified');
     } else if (newStatus === 'rejected') {
       await notifyDriver(
         driverId,
@@ -88,6 +103,7 @@ async function recomputeDriverKycStatus(driverId) {
           : 'Your KYC was rejected. Please update your documents and resubmit.',
         'kycRejected'
       );
+      await notifyDriverStatusWhatsApp(driver.phone, driver.name, 'rejected', rejectionReason);
     }
   }
 
@@ -318,7 +334,7 @@ exports.sendDriverReminder = async (req, res) => {
     } else {
       whatsapp.attempted = true;
       try {
-        await sendWhatsAppTemplate(driver.phone, templateName, { name: driver.name || 'there' });
+        await sendWhatsAppTemplate(driver.phone, templateName, { recipient_name: driver.name || 'there' });
         whatsapp.sent = true;
       } catch (waErr) {
         console.error('sendDriverReminder WhatsApp send failed:', waErr.response?.data || waErr.message);
@@ -495,6 +511,7 @@ exports.approveDriver = async (req, res) => {
         'Your KYC documents have been reviewed and approved. You are now a fully verified Woglo driver!',
         'kycApproved'
       );
+      await notifyDriverStatusWhatsApp(driver.phone, driver.name, 'verified');
     } else if (kycStatus === 'rejected') {
       await notifyDriver(
         driverId,
@@ -504,6 +521,7 @@ exports.approveDriver = async (req, res) => {
           : 'Your KYC was rejected. Please update your documents and resubmit.',
         'kycRejected'
       );
+      await notifyDriverStatusWhatsApp(driver.phone, driver.name, 'rejected', rejectionReason);
     } else if (kycStatus === 'pending') {
       await notifyDriver(
         driverId,

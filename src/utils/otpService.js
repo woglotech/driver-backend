@@ -80,7 +80,7 @@ async function sendOtpViaMsg91(phone, otp) {
 // approved templateName. Until a given reminder's template env var is set
 // and approved, this is a silent no-op, so the in-app notification still
 // goes out either way.
-async function sendWhatsAppTemplate(phone, templateName, { name }) {
+async function sendWhatsAppTemplate(phone, templateName, variables) {
   if (!templateName) {
     console.warn("No WhatsApp template configured for this reminder — skipping (in-app notification still sent)");
     return null;
@@ -89,6 +89,19 @@ async function sendWhatsAppTemplate(phone, templateName, { name }) {
   let cleanPhone = String(phone).replace(/\D/g, "");
   if (cleanPhone.length === 10) {
     cleanPhone = "91" + cleanPhone;
+  }
+
+  // MSG91's template editor forces NAMED variables (e.g. {{recipient_name}})
+  // rather than positional {{1}}. Confirmed by capturing MSG91's own "Send
+  // WhatsApp" dashboard page's actual network request: the component key is
+  // "body_" + the variable's name (e.g. body_recipient_name) — same body_N
+  // pattern as positional templates (body_1, body_2), just with the name
+  // instead of an index. Neither "body_1" nor the bare variable name alone
+  // work; both fail silently. `variables` keys here must exactly match the
+  // approved template's variable names.
+  const components = {};
+  for (const [key, value] of Object.entries(variables || {})) {
+    components[`body_${key}`] = { type: "text", value: value ?? "" };
   }
 
   const url = "https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
@@ -103,22 +116,7 @@ async function sendWhatsAppTemplate(phone, templateName, { name }) {
           code: process.env.MSG91_WHATSAPP_REMINDER_TEMPLATE_LANG || "en",
           policy: "deterministic",
         },
-        to_and_components: [
-          {
-            to: [cleanPhone],
-            // MSG91's template editor forces NAMED variables (e.g.
-            // {{recipient_name}}) rather than positional {{1}}. Confirmed
-            // by capturing MSG91's own "Send WhatsApp" dashboard page's
-            // actual network request: the component key is "body_" + the
-            // variable's name (body_recipient_name) — same body_N pattern
-            // as positional templates (body_1, body_2), just with the name
-            // instead of an index. Neither "body_1" nor the bare variable
-            // name alone ("recipient_name") work; both fail silently.
-            components: {
-              body_recipient_name: { type: "text", value: name || "there" },
-            },
-          },
-        ],
+        to_and_components: [{ to: [cleanPhone], components }],
       },
     },
   };
@@ -131,6 +129,30 @@ async function sendWhatsAppTemplate(phone, templateName, { name }) {
     timeout: 15000,
   });
   return response.data;
+}
+
+// ─── Verify/reject WhatsApp notifications ──────────────────────────────────
+// Shared with woglo-backend's vendor equivalent — same generic
+// "your verification is complete/rejected" wording and the same pair of
+// pre-approved templates (MSG91_WHATSAPP_VERIFIED_TEMPLATE_NAME /
+// MSG91_WHATSAPP_REJECTED_TEMPLATE_NAME) work for both, so only one
+// template pair needs creating in MSG91, not one per entity type. The
+// rejected template carries the admin's manually-typed reason as a
+// variable — same Marketing-reclassification risk flagged elsewhere in
+// this file; this function no-ops safely (falls back to in-app-only) until
+// a working template name is set.
+async function sendVerificationStatusWhatsApp(phone, name, status, reason) {
+  const templateName =
+    status === "approved" || status === "verified"
+      ? process.env.MSG91_WHATSAPP_VERIFIED_TEMPLATE_NAME
+      : process.env.MSG91_WHATSAPP_REJECTED_TEMPLATE_NAME;
+  if (!templateName) {
+    console.warn(`No WhatsApp ${status} template configured — skipping (in-app notification still sent)`);
+    return null;
+  }
+  const variables = { recipient_name: name || "there" };
+  if (status === "rejected") variables.reason = reason || "Please contact support for details";
+  return sendWhatsAppTemplate(phone, templateName, variables);
 }
 
 async function sendResetEmailViaMsg91(email, token) {
@@ -282,4 +304,5 @@ module.exports = {
   sendForgotPasswordEmailViaMsg91,
   sendOtpViaMsg91,
   sendWhatsAppTemplate,
+  sendVerificationStatusWhatsApp,
 };
