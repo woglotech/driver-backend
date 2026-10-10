@@ -66,11 +66,12 @@ async function pickupDone(bookingId) {
   return response.data?.data || null;
 }
 
-async function completeTrip(bookingId, endOdometerKm) {
+async function completeTrip(bookingId, endOdometerKm, extraCharges = {}) {
   assertConfigured();
+  const { tollAmount, parkingAmount, otherAmount, otherDescription } = extraCharges;
   const response = await axios.post(
     `${USER_BACKEND_URL}/api/v1/bookings/${bookingId}/complete`,
-    { endOdometerKm },
+    { endOdometerKm, tollAmount, parkingAmount, otherAmount, otherDescription },
     { headers: headers(), timeout: 10000 }
   );
   return response.data?.data || null;

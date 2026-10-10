@@ -78,8 +78,13 @@ exports.pickupDone = async (req, res, next) => {
 exports.completeTrip = async (req, res, next) => {
   try {
     await assertOwnsBooking(req.params.id, req.driver._id);
-    const { endOdometerKm } = req.body;
-    const updated = await bridge.completeTrip(req.params.id, endOdometerKm);
+    const { endOdometerKm, tollAmount, parkingAmount, otherAmount, otherDescription } = req.body;
+    const updated = await bridge.completeTrip(req.params.id, endOdometerKm, {
+      tollAmount,
+      parkingAmount,
+      otherAmount,
+      otherDescription,
+    });
     res.json({ success: true, data: updated });
   } catch (error) {
     res.status(error.status || error.response?.status || 500).json({
