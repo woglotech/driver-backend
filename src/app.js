@@ -45,12 +45,15 @@ const appVersionRoutes = require('./routes/appVersionRoutes');
 // Mount Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/driver', driverRoutes);
+// Legacy demo/itinerary Trip system (calendar + ratings data only) — see
+// the warning at the top of tripController.js before touching this. Real
+// booking actions are /api/v1/driver-bookings below.
 app.use('/api/v1/trips', tripRoutes);
 app.use('/api/v1/vendor', vendorBridgeRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/app', appVersionRoutes);
-// Real, booking-backed trips (separate from /api/v1/trips, the unrelated
-// pre-existing itinerary/demo Trip system).
+// Real, booking-backed trips (separate from /api/v1/trips above, the
+// unrelated legacy itinerary/demo Trip system).
 app.use('/api/v1/driver-bookings', driverBookingRoutes);
 
 const { notFound, errorHandler } = require('./middlewares/errorMiddleware');

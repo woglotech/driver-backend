@@ -1,3 +1,14 @@
+/**
+ * Legacy demo/itinerary Trip system — predates real bookings and is NOT
+ * where live ride/booking actions live; that's driverBookingController.js
+ * (/api/v1/driver-bookings), which proxies the customer backend. This one
+ * is still genuinely read by the Flutter app though, not dead code:
+ * calendar_page.dart and driver_rating_service.dart both call
+ * TripService.loadTrips() (GET /api/v1/trips) for calendar display and
+ * rating/review data pulled from this Trip model's own review subdocs.
+ * Don't delete it without replacing those two call sites first, and don't
+ * add real-booking logic here — add it to driverBookingController.js.
+ */
 const Trip = require('../models/Trip');
 
 // @desc    Get all trips for a driver
