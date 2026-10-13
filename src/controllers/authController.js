@@ -6,18 +6,21 @@ const Otp = require('../models/Otp');
 const generateToken = require('../utils/generateToken');
 const { recomputeDriverKycStatus } = require('./adminController');
 
-/// Stamps a fresh session id on the driver and returns a token embedding
-/// it — protect() rejects any older token once this rotates, so logging in
-/// on a new device kicks out any other device's session. Callers that
-/// already have an unsaved `driver` mutation pending (e.g. profile fields
-/// just set) can skip the extra save by setting currentSessionId
-/// themselves before their own save() and calling generateToken directly;
-/// this helper is for the common case of "driver is otherwise unchanged,
-/// just issue a session."
+/// Stamps a fresh session id and refresh token on the driver and returns
+/// both the access token and refresh token — protect() rejects any older
+/// access token once the session id rotates, so logging in on a new
+/// device kicks out any other device's session. Callers that already have
+/// an unsaved `driver` mutation pending (e.g. profile fields just set) can
+/// skip the extra save by setting currentSessionId themselves before their
+/// own save() and calling generateToken directly; this helper is for the
+/// common case of "driver is otherwise unchanged, just issue a session."
 async function issueDriverSession(driver) {
   driver.currentSessionId = crypto.randomUUID();
+  const { refreshToken, refreshTokenExpiresAt } = generateToken.generateRefreshToken();
+  driver.refreshToken = refreshToken;
+  driver.refreshTokenExpiresAt = refreshTokenExpiresAt;
   await driver.save();
-  return generateToken(driver._id, driver.currentSessionId);
+  return { token: generateToken(driver._id, driver.currentSessionId), refreshToken };
 }
 const { sendOtpViaMsg91, sendSignupEmailViaMsg91, sendForgotPasswordEmailViaMsg91 } = require('../utils/otpService');
 const { OAuth2Client } = require('google-auth-library');
@@ -91,7 +94,7 @@ exports.googleLoginOrSignup = async (req, res, next) => {
       }
     }
 
-    const token = await issueDriverSession(driver);
+    const { token, refreshToken } = await issueDriverSession(driver);
 
     res.status(200).json({
       _id: driver._id,
@@ -102,6 +105,7 @@ exports.googleLoginOrSignup = async (req, res, next) => {
       profilePicture: driver.profilePicture,
       isVerified: driver.isVerified,
       token,
+      refreshToken,
       needsPhone: !driver.phone // Tell frontend to prompt for phone if missing
     });
   } catch (error) {
@@ -165,7 +169,7 @@ exports.appleLoginOrSignup = async (req, res, next) => {
       });
     }
 
-    const token = await issueDriverSession(driver);
+    const { token, refreshToken } = await issueDriverSession(driver);
 
     res.status(200).json({
       _id: driver._id,
@@ -176,6 +180,7 @@ exports.appleLoginOrSignup = async (req, res, next) => {
       profilePicture: driver.profilePicture,
       isVerified: driver.isVerified,
       token,
+      refreshToken,
       needsPhone: !driver.phone
     });
   } catch (error) {
@@ -251,11 +256,14 @@ exports.verifyEmailOtp = async (req, res, next) => {
 
     // Create Driver
     const sessionId = crypto.randomUUID();
+    const { refreshToken, refreshTokenExpiresAt } = generateToken.generateRefreshToken();
     const driver = await Driver.create({
       name,
       email,
       password,
       currentSessionId: sessionId,
+      refreshToken,
+      refreshTokenExpiresAt,
     });
 
     res.status(201).json({
@@ -266,6 +274,7 @@ exports.verifyEmailOtp = async (req, res, next) => {
       phone: driver.phone,
       profilePicture: driver.profilePicture,
       token: generateToken(driver._id, sessionId),
+      refreshToken,
     });
   } catch (error) {
     next(error);
@@ -335,7 +344,7 @@ exports.loginDriver = async (req, res, next) => {
     // that never set a password — skip matchPassword() in that case rather
     // than letting bcrypt throw on a missing hash.
     if (driver && driver.password && (await driver.matchPassword(password))) {
-      const token = await issueDriverSession(driver);
+      const { token, refreshToken } = await issueDriverSession(driver);
       res.json({
         _id: driver._id,
         driverId: driver.driverId,
@@ -345,6 +354,7 @@ exports.loginDriver = async (req, res, next) => {
         profilePicture: driver.profilePicture,
         isVerified: driver.isVerified,
         token,
+        refreshToken,
       });
     } else {
       res.status(401);
@@ -355,7 +365,50 @@ exports.loginDriver = async (req, res, next) => {
   }
 };
 
-exports.refreshToken = async (req, res) => { res.json({ message: 'Refresh token endpoint' }); };
+// @desc    Exchange a refresh token for a new access token, so a driver
+// whose ~30d access token has expired gets silently re-authenticated
+// instead of forced back through password/OTP login. The refresh token
+// is rotated on every use (the old value stops working) but
+// currentSessionId is left untouched — this renews a session, it doesn't
+// start a new one, so it must not trip the single-device check against
+// whichever access token the caller already holds.
+// @route   POST /api/v1/auth/refresh-token
+// @access  Public (the refresh token itself is the credential)
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      res.status(400);
+      throw new Error('Please provide a refresh token');
+    }
+
+    const driver = await Driver.findOne({ refreshToken });
+
+    if (!driver || !driver.refreshTokenExpiresAt || driver.refreshTokenExpiresAt < new Date()) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired refresh token',
+      });
+    }
+
+    const rotated = generateToken.generateRefreshToken();
+    driver.refreshToken = rotated.refreshToken;
+    driver.refreshTokenExpiresAt = rotated.refreshTokenExpiresAt;
+    await driver.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Token refreshed successfully',
+      token: generateToken(driver._id, driver.currentSessionId),
+      refreshToken: rotated.refreshToken,
+      userType: 'DRIVER',
+      uniqueId: driver.driverId || '',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 // @desc    Initiate Forgot Password (Sends OTP via Email)
 // @route   POST /api/v1/auth/forgot-password
 // @access  Public
@@ -531,7 +584,7 @@ exports.verifyOtp = async (req, res, next) => {
       });
     }
 
-    const token = await issueDriverSession(driver);
+    const { token, refreshToken } = await issueDriverSession(driver);
 
     res.status(200).json({
       _id: driver._id,
@@ -541,6 +594,7 @@ exports.verifyOtp = async (req, res, next) => {
       profilePicture: driver.profilePicture,
       isVerified: driver.isVerified,
       token,
+      refreshToken,
     });
   } catch (error) {
     next(error);
@@ -585,6 +639,9 @@ exports.completeDriverRegistration = async (req, res, next) => {
     driver.phone = phone;
     driver.isVerified = true;
     driver.currentSessionId = crypto.randomUUID();
+    const { refreshToken, refreshTokenExpiresAt } = generateToken.generateRefreshToken();
+    driver.refreshToken = refreshToken;
+    driver.refreshTokenExpiresAt = refreshTokenExpiresAt;
     const updatedDriver = await driver.save();
 
     // Delete OTP record after successful linking
@@ -601,6 +658,7 @@ exports.completeDriverRegistration = async (req, res, next) => {
         phone: updatedDriver.phone,
         isVerified: updatedDriver.isVerified,
         token: generateToken(updatedDriver._id, updatedDriver.currentSessionId),
+        refreshToken,
       }
     });
   } catch (error) {

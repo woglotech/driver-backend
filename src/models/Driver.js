@@ -48,6 +48,11 @@ const driverSchema = new mongoose.Schema({
   // device's session — enforces single-device login without needing a
   // server-side token blocklist.
   currentSessionId: { type: String },
+  // Long-lived credential exchanged at POST /auth/refresh-token for a new
+  // access token without re-entering a password/OTP. Rotated on every use
+  // (the old value stops working), and cleared on logout.
+  refreshToken: { type: String },
+  refreshTokenExpiresAt: { type: Date },
 }, { timestamps: true });
 
 // Admin panel's listDrivers filters by kycStatus (or nothing, for "All") and
