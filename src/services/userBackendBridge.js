@@ -97,6 +97,16 @@ async function updateLocation(bookingId, lat, lng) {
   return response.data?.data || null;
 }
 
+async function markBalanceCollected(bookingId) {
+  assertConfigured();
+  const response = await axios.patch(
+    `${USER_BACKEND_URL}/api/v1/bookings/${bookingId}/mark-balance-collected`,
+    {},
+    { headers: headers(), timeout: 10000 }
+  );
+  return response.data?.data || null;
+}
+
 module.exports = {
   fetchDriverBookings,
   fetchBookingDriverView,
@@ -105,4 +115,5 @@ module.exports = {
   completeTrip,
   cancelTrip,
   updateLocation,
+  markBalanceCollected,
 };

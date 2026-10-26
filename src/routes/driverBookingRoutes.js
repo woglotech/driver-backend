@@ -15,5 +15,6 @@ router.post('/:id/pickup-done', driverBookingController.pickupDone);
 router.post('/:id/complete', driverBookingController.completeTrip);
 router.post('/:id/cancel', driverBookingController.cancelTrip);
 router.patch('/:id/location', driverBookingController.updateLocation);
+router.patch('/:id/mark-balance-collected', driverBookingController.markBalanceCollected);
 
 module.exports = router;
