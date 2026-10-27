@@ -539,6 +539,13 @@ exports.assignVehicle = async (req, res, next) => {
         vendorName: vehicle.vendorName,
         assignedFromDate: vehicle.assignedFromDate,
         assignedToDate: vehicle.assignedToDate,
+        // So the vendor backend's bridge caller can backfill this driver
+        // onto any of this vendor's bookings already sitting on this
+        // vehicle with no driver yet — see assignVehicle in
+        // woglo-backend/controllers/vendorDriverBridgeController.js.
+        driverId: driver._id,
+        driverName: driver.name,
+        driverPhone: driver.phone,
       },
     });
   } catch (error) {
