@@ -14,13 +14,21 @@ async function sendOtpViaMsg91(phone, otp) {
   // msg91 single-message WhatsApp endpoint (supports standard components array format)
   const url = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/";
 
-  // Reverted back to the OLD WhatsApp number (919446688097) and its
-  // existing template — the new number (919446688082) that this was
-  // briefly migrated to got blocked by Meta. This is the last
-  // proven-working pre-migration payload: 5 fixed body params (MSG91_PARAM_1/2/3/5
-  // env-overridable, otp always in slot 4) + a URL button carrying the otp.
+  // Deliberately a SEPARATE env var from MSG91_WHATSAPP_NUMBER (which
+  // sendWhatsAppTemplate/sendVerificationStatusWhatsApp below use for
+  // admin-panel reminder/verification sends) — the two now genuinely need
+  // different numbers: login OTP reliably sends from 919446688097 and its
+  // existing template, while the admin-panel templates were only ever
+  // registered on 919446688082. Sharing one variable (as woglo-backend's
+  // equivalent file did too) caused a real incident there: adding a second
+  // MSG91_WHATSAPP_NUMBER entry in Cloud Run to fix OTP silently
+  // redirected admin-panel sends onto the OTP number too, since Cloud Run
+  // uses the last-declared value for duplicate-named env vars. This is the
+  // last proven-working pre-migration payload: 5 fixed body params
+  // (MSG91_PARAM_1/2/3/5 env-overridable, otp always in slot 4) + a URL
+  // button carrying the otp.
   const payload = {
-    integrated_number: process.env.MSG91_WHATSAPP_NUMBER,
+    integrated_number: process.env.MSG91_WHATSAPP_OTP_NUMBER || process.env.MSG91_WHATSAPP_NUMBER,
     content_type: "template",
     payload: {
       messaging_product: "whatsapp",
