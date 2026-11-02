@@ -46,21 +46,23 @@ async function fetchBookingDriverView(bookingId) {
   return response.data?.data || null;
 }
 
-async function startTrip(bookingId, startOdometerKm) {
+async function startTrip(bookingId) {
   assertConfigured();
   const response = await axios.post(
     `${USER_BACKEND_URL}/api/v1/bookings/${bookingId}/start`,
-    { startOdometerKm },
+    {},
     { headers: headers(), timeout: 10000 }
   );
   return response.data?.data || null;
 }
 
-async function pickupDone(bookingId) {
+// startOdometerKm is captured here, not startTrip — see the customer
+// backend's pickupDone handler for why.
+async function pickupDone(bookingId, startOdometerKm) {
   assertConfigured();
   const response = await axios.post(
     `${USER_BACKEND_URL}/api/v1/bookings/${bookingId}/pickup-done`,
-    {},
+    { startOdometerKm },
     { headers: headers(), timeout: 10000 }
   );
   return response.data?.data || null;

@@ -51,8 +51,7 @@ exports.getBookingDetail = async (req, res, next) => {
 exports.startTrip = async (req, res, next) => {
   try {
     await assertOwnsBooking(req.params.id, req.driver._id);
-    const { startOdometerKm } = req.body;
-    const updated = await bridge.startTrip(req.params.id, startOdometerKm);
+    const updated = await bridge.startTrip(req.params.id);
     res.json({ success: true, data: updated });
   } catch (error) {
     res.status(error.status || error.response?.status || 500).json({
@@ -65,7 +64,8 @@ exports.startTrip = async (req, res, next) => {
 exports.pickupDone = async (req, res, next) => {
   try {
     await assertOwnsBooking(req.params.id, req.driver._id);
-    const updated = await bridge.pickupDone(req.params.id);
+    const { startOdometerKm } = req.body;
+    const updated = await bridge.pickupDone(req.params.id, startOdometerKm);
     res.json({ success: true, data: updated });
   } catch (error) {
     res.status(error.status || error.response?.status || 500).json({
