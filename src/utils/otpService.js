@@ -337,11 +337,43 @@ async function sendSignupEmailViaMsg91(email, otp) {
   }
 }
 
+/**
+ * Send a plain SMS OTP via MSG91's Flow (template) API — sent ALONGSIDE the
+ * WhatsApp OTP, not instead of it, since not every user has WhatsApp
+ * installed. Uses the registered DLT SMS template (MSG91_SMS_TEMPLATE_ID),
+ * whose only variable is OTP (the template's ##OTP## placeholder). A no-op
+ * if that env var isn't set, so this is safe to call unconditionally.
+ */
+async function sendSmsOtp(phone, otp) {
+  const templateId = process.env.MSG91_SMS_TEMPLATE_ID;
+  if (!templateId) return;
+
+  let cleanPhone = String(phone).replace(/\D/g, "");
+  if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+
+  await axios.post(
+    "https://control.msg91.com/api/v5/flow/",
+    {
+      template_id: templateId,
+      short_url: "0",
+      recipients: [{ mobiles: cleanPhone, OTP: otp }],
+    },
+    {
+      headers: {
+        authkey: process.env.MSG91_EMAIL_AUTHKEY,
+        "Content-Type": "application/json",
+      },
+      timeout: 10000,
+    }
+  );
+}
+
 module.exports = {
   sendResetEmailViaMsg91,
   sendSignupEmailViaMsg91,
   sendForgotPasswordEmailViaMsg91,
   sendOtpViaMsg91,
+  sendSmsOtp,
   sendWhatsAppTemplate,
   sendVerificationStatusWhatsApp,
 };

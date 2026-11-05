@@ -22,7 +22,7 @@ async function issueDriverSession(driver) {
   await driver.save();
   return { token: generateToken(driver._id, driver.currentSessionId), refreshToken };
 }
-const { sendOtpViaMsg91, sendSignupEmailViaMsg91, sendForgotPasswordEmailViaMsg91 } = require('../utils/otpService');
+const { sendOtpViaMsg91, sendSmsOtp, sendSignupEmailViaMsg91, sendForgotPasswordEmailViaMsg91 } = require('../utils/otpService');
 const { OAuth2Client } = require('google-auth-library');
 const audiences = process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.split(',').map(id => id.trim()).filter(id => id.length > 0) : [];
 const client = new OAuth2Client(audiences[0]);
@@ -531,6 +531,12 @@ exports.loginOrSignupPhone = async (req, res, next) => {
 
     // Send via WhatsApp
     await sendOtpViaMsg91(phone, otp);
+
+    // SMS OTP alongside WhatsApp — best-effort, doesn't block login if it
+    // fails (WhatsApp above already succeeded by this point).
+    sendSmsOtp(phone, otp).catch((err) =>
+      console.error('MSG91 SMS OTP error:', err?.response?.data || err.message)
+    );
 
     res.status(200).json({
       success: true,
