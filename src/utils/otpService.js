@@ -23,23 +23,36 @@ async function sendOtpViaMsg91(phone, otp) {
   // equivalent file did too) caused a real incident there: adding a second
   // MSG91_WHATSAPP_NUMBER entry in Cloud Run to fix OTP silently
   // redirected admin-panel sends onto the OTP number too, since Cloud Run
-  // uses the last-declared value for duplicate-named env vars. This is the
-  // last proven-working pre-migration payload: 5 fixed body params
-  // (MSG91_PARAM_1/2/3/5 env-overridable, otp always in slot 4) + a URL
-  // button carrying the otp.
-  const payload = {
-    integrated_number: process.env.MSG91_WHATSAPP_OTP_NUMBER || process.env.MSG91_WHATSAPP_NUMBER,
-    content_type: "template",
-    payload: {
-      messaging_product: "whatsapp",
-      to: cleanPhone,
-      type: "template",
-      template: {
-        name: process.env.MSG91_WHATSAPP_TEMPLATE_NAME,
-        language: {
-          code: process.env.MSG91_WHATSAPP_LANGUAGE || "en_US"
-        },
-        components: [
+  // uses the last-declared value for duplicate-named env vars.
+  //
+  // MSG91_WHATSAPP_TEMPLATE_FORMAT picks which component shape to send,
+  // same as woglo_user_app_backend's equivalent — switching numbers/
+  // templates going forward (e.g. to the new "woglo_customer_otp" template,
+  // reused here for driver OTP) only needs a Cloud Run env var change, not
+  // a code change.
+  //   'legacy_5var' (default)  — the pre-migration payload: 5 fixed body
+  //                              params (MSG91_PARAM_1/2/3/5 env-
+  //                              overridable, otp always in slot 4) + a URL
+  //                              button carrying the otp.
+  //   'auth_single_var'        — current Meta Authentication-template
+  //                              shape; body is just the OTP, same value
+  //                              repeated into the copy-code button.
+  const format = process.env.MSG91_WHATSAPP_TEMPLATE_FORMAT || "legacy_5var";
+  const components =
+    format === "auth_single_var"
+      ? [
+          {
+            type: "body",
+            parameters: [{ type: "text", text: otp }],
+          },
+          {
+            type: "button",
+            sub_type: "url",
+            index: "0",
+            parameters: [{ type: "text", text: otp }],
+          },
+        ]
+      : [
           {
             type: "body",
             parameters: [
@@ -58,7 +71,21 @@ async function sendOtpViaMsg91(phone, otp) {
               { type: "text", text: otp }
             ]
           }
-        ]
+        ];
+
+  const payload = {
+    integrated_number: process.env.MSG91_WHATSAPP_OTP_NUMBER || process.env.MSG91_WHATSAPP_NUMBER,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      to: cleanPhone,
+      type: "template",
+      template: {
+        name: process.env.MSG91_WHATSAPP_TEMPLATE_NAME,
+        language: {
+          code: process.env.MSG91_WHATSAPP_LANGUAGE || "en_US"
+        },
+        components
       }
     }
   };
